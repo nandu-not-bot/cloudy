@@ -2,6 +2,10 @@ expr    : term ((PLUS|MINUS) term)*
 
 term    : factor ((MULT|DIV) factor)*
 
-factor  : INT|FLOAT
-        : (PLUS|MINUS) factor
+factor  : atom (POW factor)*
+        : power
+
+power   : factor ((MULT|DIV) factor)*
+
+atom    : INT|FLOAT
         : LPAR expr RPAR
