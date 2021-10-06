@@ -1,6 +1,6 @@
 import cloudy
 
-print("\nWelcome to cloudy! [type \"__quit__\" to quit the shell]")
+print("Welcome to cloudy! [type \"__quit__\" to quit the shell]")
 
 while True:
     text = input("cloudy>>> ")

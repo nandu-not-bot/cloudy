@@ -101,6 +101,8 @@ TT_PLUS = "PLUS"
 TT_MINUS = "MINUS"
 TT_MULT = "MULT"
 TT_DIV = "DIV"
+TT_FDIV = "FDIV"
+TT_MODU = "MODU"
 TT_POW = "POW"
 TT_LPAR = "LPAR"
 TT_RPAR = "RPAR"
@@ -172,7 +174,15 @@ class Lexer:
                     tokens.append(Token(TT_MULT, pos_start=self.pos))
                 self.advance()
             elif self.current_char == "/":
-                tokens.append(Token(TT_DIV, pos_start=self.pos))
+                if self.pos.idx < len(self.text) - 1 and self.text[self.pos.idx + 1] == "/":
+                    start_pos = self.pos.copy()
+                    self.advance()
+                    tokens.append(Token(TT_FDIV, pos_start=start_pos, pos_end=self.pos))
+                else:
+                    tokens.append(Token(TT_DIV, pos_start=self.pos))
+                self.advance()
+            elif self.current_char == "%":
+                tokens.append(Token(TT_MODU, pos_start=self.pos))
                 self.advance()
             elif self.current_char == "(":
                 tokens.append(Token(TT_LPAR, pos_start=self.pos))
@@ -352,7 +362,7 @@ class Parser:
         return self.power()
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MULT, TT_DIV))
+        return self.bin_op(self.factor, (TT_MULT, TT_DIV, TT_FDIV, TT_MODU))
 
     def expr(self):
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
@@ -439,6 +449,18 @@ class Number:
                 return None, RTError(other.pos_start, other.pos_end, "Division by zero", self.context)
             return Number(self.value / other.value).set_context(self.context), None
 
+    def __floordiv__(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(other.pos_start, other.pos_end, "Division by zero", self.context)
+            return Number(self.value // other.value).set_context(self.context), None
+
+    def __mod__(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(other.pos_start, other.pos_end, "Modulo by zero", self.context)
+            return Number(self.value % other.value).set_context(self.context), None
+
     def __neg__(self):
         return Number(-self.value)
 
@@ -502,6 +524,10 @@ class Interpreter:
             result, error = left * right
         elif node.op_tok.type_ == TT_DIV:
             result, error = left / right
+        elif node.op_tok.type_ == TT_FDIV:
+            result, error = left // right
+        elif node.op_tok.type_ == TT_MODU:
+            result, error = left % right
         elif node.op_tok.type_ == TT_POW:
             result, error = left ** right
 
