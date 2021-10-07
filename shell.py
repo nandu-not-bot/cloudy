@@ -1,4 +1,4 @@
-import cloudy
+from cloudy import interpreter as cloudy
 
 print("Welcome to cloudy! [type \"__quit__\" to quit the shell]")
 

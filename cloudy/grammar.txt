@@ -1,7 +1,7 @@
 expr            : KEYWORD:var IDENTIFIER EQ expr
                 : comp-expr ((KEYWORD:and|KEYWORD:or) comp-expr)*
 
-comp-expr       : KEYWORD:not comp-expr
+comp-expr       : not comp-expr
                 : arith-expr ((EE|LT|GT|LTE|GTE|NE) arith-expr)*
         
 arith-expr      : term ((PLUS|MINUS) term)*
@@ -13,5 +13,11 @@ factor          : atom (POW factor)*
 
 power           : factor ((MULT|DIV) factor)*
 
-atom            :INT|FLOAT|IDENTIFIER
+atom            : INT|FLOAT|IDENTIFIER|BOOL
                 : LPAR expr RPAR
+
+Boolean use cases:
+    1. var x = true
+    2. true and false
+    3. not true
+    
