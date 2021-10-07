@@ -15,9 +15,8 @@ power           : factor ((MULT|DIV) factor)*
 
 atom            : INT|FLOAT|IDENTIFIER|BOOL
                 : LPAR expr RPAR
+                : if-expr
 
-Boolean use cases:
-    1. var x = true
-    2. true and false
-    3. not true
-    
+if-expr         : KEYWORD:if expr KEYWORD:then expr
+                : (KEYWORD:elif expr KEYWORD:then expr)*
+                : (KEYWORD:else expr)? 

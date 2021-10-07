@@ -1,11 +1,15 @@
 from .utils import Position, TT
 from .errors import RTError
 from .lexer import Lexer
-from .parser import Parser, NumberNode, BinOpNode, UnaryOpNode, VarAccessNode, VarAssignNode
-
-# ------------------------------
-# RUNTIME RESULT
-# ------------------------------
+from .parser import (
+    Parser,
+    AtomNode,
+    BinOpNode,
+    UnaryOpNode,
+    VarAccessNode,
+    VarAssignNode,
+    IfNode
+)
 
 
 class RTResult:
@@ -27,13 +31,8 @@ class RTResult:
         return self
 
 
-# ------------------------------
-# VALUES
-# ------------------------------
-
-
-class Number:
-    def __init__(self, value: int):
+class DataType:
+    def __init__(self, value):
         self.value = value
         self.set_pos()
         self.set_context()
@@ -53,20 +52,32 @@ class Number:
         copy.set_context(self.context)
         return copy
 
+    def get_type_from_value(self):
+        str_value = str(self.value)
+        if str_value.isnumeric():
+            return Number(self.value)
+        elif str_value in {"True", "False"}:
+            return Bool(self.value)
+
+
+class Number(DataType):
+    def __init__(self, value: int):
+        super().__init__(value)
+
     def __add__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             return Number(self.value + other.value).set_context(self.context), None
 
     def __sub__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             return Number(self.value - other.value).set_context(self.context), None
 
     def __mul__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             return Number(self.value * other.value).set_context(self.context), None
 
     def __truediv__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             if other.value == 0:
                 return None, RTError(
                     other.pos_start, other.pos_end, "Division by zero", self.context
@@ -74,7 +85,7 @@ class Number:
             return Number(self.value / other.value).set_context(self.context), None
 
     def __floordiv__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             if other.value == 0:
                 return None, RTError(
                     other.pos_start, other.pos_end, "Division by zero", self.context
@@ -82,7 +93,7 @@ class Number:
             return Number(self.value // other.value).set_context(self.context), None
 
     def __mod__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             if other.value == 0:
                 return None, RTError(
                     other.pos_start, other.pos_end, "Modulo by zero", self.context
@@ -93,51 +104,171 @@ class Number:
         return Number(-self.value)
 
     def __pow__(self, other):
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Bool)):
             return Number(self.value ** other.value).set_context(self.context), None
 
     def __eq__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value == other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value == other.value).set_context(self.context),
+                None,
+            )
 
     def __ne__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value != other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value != other.value).set_context(self.context),
+                None,
+            )
 
     def __lt__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value < other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return Bool(self.value < other.value).set_context(self.context), None
 
     def __le__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value <= other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value <= other.value).set_context(self.context),
+                None,
+            )
 
     def __gt__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value > other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return Bool(self.value > other.value).set_context(self.context), None
 
     def __ge__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value >= other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value >= other.value).set_context(self.context),
+                None,
+            )
 
     def __and__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value and other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value and other.value).set_context(self.context),
+                None,
+            )
 
     def __or__(self, other):
-        if isinstance(other, Number):
-            return Number(int(self.value or other.value)).set_context(self.context), None
+        if isinstance(other, (Number, Bool)):
+            return (
+                bool(self.value or other.value).set_context(self.context),
+                None,
+            )
 
     def __not__(self):
-        return Number(int(not self.value)).set_context(self.context), None
+        return Bool(not self.value).set_context(self.context), None
 
     def __repr__(self):
         return str(self.value)
 
 
-# ------------------------------
-# SYMBOL TABLE
-# ------------------------------
+class Bool(DataType):
+    def __init__(self, value: bool):
+        super().__init__(value)
+
+    def __add__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Number(self.value + other.value).set_context(self.context), None
+
+    def __sub__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Number(self.value - other.value).set_context(self.context), None
+
+    def __mul__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Number(self.value * other.value).set_context(self.context), None
+
+    def __truediv__(self, other):
+        if isinstance(other, (Number, Bool)):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end, "Division by zero", self.context
+                )
+            return Number(self.value / other.value).set_context(self.context), None
+
+    def __floordiv__(self, other):
+        if isinstance(other, (Number, Bool)):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end, "Division by zero", self.context
+                )
+            return Number(self.value // other.value).set_context(self.context), None
+
+    def __mod__(self, other):
+        if isinstance(other, (Number, Bool)):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end, "Modulo by zero", self.context
+                )
+            return Number(self.value % other.value).set_context(self.context), None
+
+    def __neg__(self):
+        return Number(-self.value)
+
+    def __pow__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Number(self.value ** other.value).set_context(self.context), None
+
+    def __eq__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value == other.value).set_context(self.context),
+                None,
+            )
+
+    def __ne__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value != other.value).set_context(self.context),
+                None,
+            )
+
+    def __lt__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Bool(self.value < other.value).set_context(self.context), None
+
+    def __le__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value <= other.value).set_context(self.context),
+                None,
+            )
+
+    def __gt__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return Bool(self.value > other.value).set_context(self.context), None
+
+    def __ge__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value >= other.value).set_context(self.context),
+                None,
+            )
+
+    def __and__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value and other.value).set_context(self.context),
+                None,
+            )
+
+    def __or__(self, other):
+        if isinstance(other, (Number, Bool)):
+            return (
+                Bool(self.value or other.value).set_context(self.context),
+                None,
+            )
+
+    def __not__(self):
+        return Bool(not self.value).set_context(self.context), None
+
+    def is_true(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self.value).lower()
 
 
 class SymbolTable:
@@ -158,22 +289,12 @@ class SymbolTable:
         del self.symbols[name]
 
 
-# ------------------------------
-# CONTEXT
-# ------------------------------
-
-
 class Context:
     def __init__(self, display_name: str, parent=None, parent_entry_pos=None):
         self.display_name = display_name
         self.parent = parent
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table: SymbolTable = None
-
-
-# ------------------------------
-# INTERPRETER
-# ------------------------------
 
 
 class Interpreter:
@@ -185,11 +306,10 @@ class Interpreter:
     def no_visit_method(self, node):
         raise Exception(f"No visit_{type(node).__name__}")
 
-    # ------------------------------
-
-    def visit_NumberNode(self, node: NumberNode, context: Context):
+    def visit_AtomNode(self, node: AtomNode, context: Context):
         return RTResult().success(
-            Number(node.tok.value)
+            DataType(node.tok.value)
+            .get_type_from_value()
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
@@ -220,9 +340,11 @@ class Interpreter:
             return res
 
         context.symbol_table.set(var_name, value)
-        return res.success(value)
+        return res.success(None)
 
-    def visit_BinOpNode(self, node: BinOpNode, context: Context) -> Number: # sourcery no-metrics
+    def visit_BinOpNode(
+        self, node: BinOpNode, context: Context
+    ) -> Number:  # sourcery no-metrics
         res = RTResult()
         left = res.register(self.visit(node.left_node, context))
         if res.error:
@@ -260,7 +382,7 @@ class Interpreter:
         elif node.op_tok.matches(TT.KEYWORD, "and"):
             result, error = left.__and__(right)
         elif node.op_tok.matches(TT.KEYWORD, "or"):
-            result, error = left.__or__
+            result, error = left.__or__(right)
 
         if error:
             return res.faliure(error)
@@ -284,6 +406,25 @@ class Interpreter:
             return res
         return res.success(number.set_pos(node.pos_start, node.pos_end))
 
+    def visit_IfNode(self, node:IfNode, context=None):
+        res = RTResult()
+
+        for condition, expr in node.cases:
+            condition_value = res.register(self.visit(condition, context))
+            if res.error: return res
+
+            if condition_value.is_true():
+                expr_value = res.register(self.visit(expr, context))
+                if res.error: return res
+                return res.success(expr_value)
+
+        if node.else_case: 
+            else_value = res.register(self.visit(node.else_case, context))
+            if res.error: return res
+            return res.success(else_value)
+
+        return res.success(None)
+
 
 global_symbol_table = SymbolTable()
 global_symbol_table.set("null", Number(0))
@@ -293,6 +434,7 @@ def run(fn: str, text: str):
     # Generate Tokens
     lexer = Lexer(text, fn)
     tokens, error = lexer.make_tokens()
+    # return tokens, error
     if error:
         return None, error
     if not tokens:
@@ -301,6 +443,7 @@ def run(fn: str, text: str):
     # Generate AST
     parser = Parser(tokens)
     ast = parser.parse()
+    # return ast.node, ast.error
     if ast.error:
         return None, ast.error
 
@@ -309,5 +452,8 @@ def run(fn: str, text: str):
     context = Context("<program>")
     context.symbol_table = global_symbol_table
     result = interpreter.visit(ast.node, context)
+
+    if str(result.value) in {"True", "False"}:
+        result.value = str(result.value).lower()
 
     return result.value, result.error

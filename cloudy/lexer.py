@@ -30,11 +30,6 @@ class Token:
         return f"{self.type}"
 
 
-# ------------------------------
-# LEXER
-# ------------------------------
-
-
 class Lexer:
     def __init__(self, text: str, fn: str):
         self.text = text
@@ -139,7 +134,14 @@ class Lexer:
             id_str += self.current_char
             self.advance()
 
-        tok_type = TT.KEYWORD if id_str in KEYWORDS else TT.IDENTIFIER
+        if id_str in KEYWORDS:
+            tok_type = TT.KEYWORD
+        elif id_str in {"true", "false"}:
+            tok_type = TT.BOOL
+            id_str = id_str == "true"
+        else:
+            tok_type = TT.IDENTIFIER
+
         return Token(tok_type, id_str, pos_start, self.pos)
 
     def make_not_equals(self) -> tuple[Token, Error]:

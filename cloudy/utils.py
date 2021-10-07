@@ -6,6 +6,7 @@ LETTERS = string.ascii_letters + "_"
 class TT:
     INT = "INT"
     FLOAT = "FLOAT"
+    BOOL = "BOOL"
     IDENTIFIER = "IDENTIFIER"
     KEYWORD = "KEYWORD"
     EQ = "EQ"
@@ -26,8 +27,7 @@ class TT:
     GTE = "GTE"
     EOF = "EOF"
 
-KEYWORDS = ["var", "and", "or", "not"]
-
+KEYWORDS = ["var", "and", "or", "not", "if", "then", "elif", "else"]
 
 class Position:
     def __init__(self, idx: int, ln: int, col: int, fn: str, ftxt: str):

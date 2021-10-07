@@ -2,7 +2,7 @@ from .lexer import Token
 from .utils import TT
 from .errors import InvalidSyntaxError
 
-class NumberNode:
+class AtomNode:
     def __init__(self, tok: Token):
         self.tok = tok
 
@@ -22,7 +22,7 @@ class VarAccessNode:
 
 
 class VarAssignNode:
-    def __init__(self, var_name_tok: Token, value_node: NumberNode):
+    def __init__(self, var_name_tok: Token, value_node: AtomNode):
         self.var_name_tok = var_name_tok
         self.value_node = value_node
 
@@ -31,7 +31,7 @@ class VarAssignNode:
 
 
 class BinOpNode:
-    def __init__(self, left_node: NumberNode, op_tok: Token, right_node: NumberNode):
+    def __init__(self, left_node: AtomNode, op_tok: Token, right_node: AtomNode):
         self.left_node = left_node
         self.op_tok = op_tok
         self.right_node = right_node
@@ -44,7 +44,7 @@ class BinOpNode:
 
 
 class UnaryOpNode:
-    def __init__(self, op_tok: Token, node: NumberNode):
+    def __init__(self, op_tok: Token, node: AtomNode):
         self.op_tok = op_tok
         self.node = node
 
@@ -53,12 +53,6 @@ class UnaryOpNode:
 
     def __repr__(self):
         return f"({self.op_tok}, {self.node})"
-
-
-# ------------------------------
-# PARSE RESULT
-# ------------------------------
-
 
 class ParseResult:
     def __init__(self):
@@ -84,10 +78,13 @@ class ParseResult:
             self.error = error
         return self
 
+class IfNode:
+    def __init__(self, cases: list[tuple[BinOpNode]], else_case:BinOpNode):
+        self.cases = cases
+        self.else_case = else_case
 
-# ------------------------------
-# PARSER
-# ------------------------------
+        self.pos_start = self.cases[0][0].pos_start
+        self.pos_end = (self.else_case or self.cases[-1][0]).pos_end
 
 
 class Parser:
@@ -101,8 +98,6 @@ class Parser:
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
         return self.current_tok
-
-    # ------------------------------
 
     def parse(self):
         res = self.expr()
@@ -120,10 +115,10 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type in (TT.INT, TT.FLOAT):
+        if tok.type in (TT.INT, TT.FLOAT, TT.BOOL):
             res.register_advancement()
             self.advance()
-            return res.success(NumberNode(tok))
+            return res.success(AtomNode(tok))
 
         elif tok.type == TT.IDENTIFIER:
             res.register_advancement()
@@ -148,6 +143,11 @@ class Parser:
             res.register_advancement()
             self.advance()
             return res.success(expr)
+
+        elif tok.matches(TT.KEYWORD, "if"):
+            if_expr = res.register(self.if_expr())
+            if res.error: return res
+            return res.success(if_expr)
 
         return res.faliure(
             InvalidSyntaxError(
@@ -203,6 +203,62 @@ class Parser:
         )
 
         return res.success(node)
+
+    def if_expr(self):
+        res = ParseResult()
+        cases = []
+        else_case = None
+
+        if not self.current_tok.matches(TT.KEYWORD, "if"):
+            return res.faliure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'if'"
+            ))
+
+        res.register_advancement()
+        self.advance()
+
+        condition = res.register(self.expr())
+        if res.error: return res
+
+        if not self.current_tok.matches(TT.KEYWORD, "then"):
+            return res.faliure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'then'"
+            ))
+
+        res.register_advancement()
+        self.advance()
+
+        expr = res.register(self.expr())
+        if res.error: return res
+        cases.append((condition, expr))
+
+        while self.current_tok.matches(TT.KEYWORD, "elif"):
+            res.register_advancement()
+            self.advance()
+
+            condition = res.register(self.expr())
+            if res.error: return res
+
+            if not self.current_tok.matches(TT.KEYWORD, "then"):
+                return res.faliure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected 'then'"
+                ))
+            
+            res.register_advancement()
+            self.advance()
+
+            expr = res.register(self.expr())
+            if res.error: return res
+            cases.append((condition, expr))
+
+        if self.current_tok.matches(TT.KEYWORD, "else"):
+            res.register_advancement()
+            self.advance()
+
+            else_case = res.register(self.expr())
+            if res.error: return res
+
+        return res.success(IfNode(cases, else_case))
 
     def expr(self):
         res = ParseResult()
