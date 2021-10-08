@@ -2,6 +2,8 @@ from .utils import Position, TT
 from .errors import RTError
 from .lexer import Lexer
 from .parser import (
+    CallNode,
+    FuncDefNode,
     Parser,
     AtomNode,
     BinOpNode,
@@ -10,7 +12,7 @@ from .parser import (
     VarAssignNode,
     IfNode,
     ForNode,
-    WhileNode
+    WhileNode,
 )
 
 
@@ -34,8 +36,7 @@ class RTResult:
 
 
 class DataType:
-    def __init__(self, value):
-        self.value = value
+    def __init__(self):
         self.set_pos()
         self.set_context()
 
@@ -49,10 +50,7 @@ class DataType:
         return self
 
     def copy(self):
-        copy = Number(self.value)
-        copy.set_pos(self.pos_start, self.pos_end)
-        copy.set_context(self.context)
-        return copy
+        raise Exception("NO COPIES")
 
     def get_type_from_value(self):
         str_value = str(self.value)
@@ -61,46 +59,70 @@ class DataType:
         elif str_value in {"True", "False"}:
             return Bool(self.value)
 
+    def is_true(self):
+        return False
+
+    def illegal_operation(self, other=None):
+        if not other:
+            other = self
+        return RTError(self.pos_start, other.pos_end, "Illegal operation", self.context)
+
 
 class Number(DataType):
     def __init__(self, value: int):
-        super().__init__(value)
+        self.value = value
+        super().__init__()
+
+    def copy(self):
+        return Number(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value + other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __sub__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value - other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __mul__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value * other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __truediv__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Division by zero", self.context
-                )
-            return Number(self.value / other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Division by zero", self.context
+            )
+        return Number(self.value / other.value).set_context(self.context), None
 
     def __floordiv__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Division by zero", self.context
-                )
-            return Number(self.value // other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Division by zero", self.context
+            )
+        return Number(self.value // other.value).set_context(self.context), None
 
     def __mod__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Modulo by zero", self.context
-                )
-            return Number(self.value % other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Modulo by zero", self.context
+            )
+        return Number(self.value % other.value).set_context(self.context), None
 
     def __neg__(self):
         return Number(-self.value)
@@ -108,6 +130,8 @@ class Number(DataType):
     def __pow__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value ** other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __eq__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -115,6 +139,8 @@ class Number(DataType):
                 Bool(self.value == other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __ne__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -122,10 +148,14 @@ class Number(DataType):
                 Bool(self.value != other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __lt__(self, other):
         if isinstance(other, (Number, Bool)):
             return Bool(self.value < other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __le__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -133,10 +163,14 @@ class Number(DataType):
                 Bool(self.value <= other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __gt__(self, other):
         if isinstance(other, (Number, Bool)):
             return Bool(self.value > other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __ge__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -144,6 +178,8 @@ class Number(DataType):
                 Bool(self.value >= other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __and__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -151,6 +187,8 @@ class Number(DataType):
                 Bool(self.value and other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __or__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -158,6 +196,8 @@ class Number(DataType):
                 bool(self.value or other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __not__(self):
         return Bool(not self.value).set_context(self.context), None
@@ -168,50 +208,62 @@ class Number(DataType):
 
 class Bool(DataType):
     def __init__(self, value: bool):
-        super().__init__(value)
+        self.value = value
+        super().__init__()
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value + other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __sub__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value - other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __mul__(self, other):
         if isinstance(other, (Number, Bool)):
             return Number(self.value * other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __truediv__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Division by zero", self.context
-                )
-            return Number(self.value / other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Division by zero", self.context
+            )
+        return Number(self.value / other.value).set_context(self.context), None
 
     def __floordiv__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Division by zero", self.context
-                )
-            return Number(self.value // other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Division by zero", self.context
+            )
+        return Number(self.value // other.value).set_context(self.context), None
 
     def __mod__(self, other):
-        if isinstance(other, (Number, Bool)):
-            if other.value == 0:
-                return None, RTError(
-                    other.pos_start, other.pos_end, "Modulo by zero", self.context
-                )
-            return Number(self.value % other.value).set_context(self.context), None
+        if not isinstance(other, (Number, Bool)):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        if other.value == 0:
+            return None, RTError(
+                other.pos_start, other.pos_end, "Modulo by zero", self.context
+            )
+        return Number(self.value % other.value).set_context(self.context), None
 
     def __neg__(self):
         return Number(-self.value)
 
     def __pow__(self, other):
-        if isinstance(other, (Number, Bool)):
-            return Number(self.value ** other.value).set_context(self.context), None
+        return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __eq__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -219,6 +271,8 @@ class Bool(DataType):
                 Bool(self.value == other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __ne__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -226,10 +280,14 @@ class Bool(DataType):
                 Bool(self.value != other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __lt__(self, other):
         if isinstance(other, (Number, Bool)):
             return Bool(self.value < other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __le__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -237,10 +295,14 @@ class Bool(DataType):
                 Bool(self.value <= other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __gt__(self, other):
         if isinstance(other, (Number, Bool)):
             return Bool(self.value > other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __ge__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -248,6 +310,8 @@ class Bool(DataType):
                 Bool(self.value >= other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __and__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -255,13 +319,17 @@ class Bool(DataType):
                 Bool(self.value and other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __or__(self, other):
         if isinstance(other, (Number, Bool)):
             return (
-                Bool(self.value or other.value).set_context(self.context),
+                bool(self.value or other.value).set_context(self.context),
                 None,
             )
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
     def __not__(self):
         return Bool(not self.value).set_context(self.context), None
@@ -269,12 +337,60 @@ class Bool(DataType):
     def is_true(self):
         return self.value
 
+    def copy(self):
+        return Bool(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
+
     def __repr__(self):
         return str(self.value).lower()
 
 
+class Function(DataType):
+    def __init__(self, name, body_node: BinOpNode, arg_names: list):
+        super().__init__()
+        self.name = name
+        self.body_node = body_node
+        self.arg_names = arg_names
+
+    def execute(self, args):
+        res = RTResult()
+        interpreter = Interpreter()
+
+        new_context = Context(self.name, self.context, self.pos_start)
+        new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+
+        if len(args) != len(self.arg_names):
+            return res.faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    f"Function {self.name} takes in {len(self.arg_names)} but {len(args)} passed instead.",
+                )
+            )
+
+        for i, arg in enumerate(args):
+            arg_name = self.arg_names[i]
+            arg_value = arg
+            arg_value.set_context(new_context)
+            new_context.symbol_table.set(arg_name, arg_value)
+
+        value = res.register(interpreter.visit(self.body_node, new_context))
+        if res.error:
+            return res
+
+        return res.success(value)
+
+    def copy(self):
+        copy = Function(self.name, self.body_node, self.arg_names)
+        copy.set_context(self.context)
+        copy.set_pos(self.pos_start, self.pos_end)
+        return copy
+
+    def __repr__(self):
+        return f"<function {self.name}>"
+
+
 class SymbolTable:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.symbols = {}
         self.parent: dict = None
 
@@ -310,8 +426,7 @@ class Interpreter:
 
     def visit_AtomNode(self, node: AtomNode, context: Context):
         return RTResult().success(
-            DataType(node.tok.value)
-            .get_type_from_value()
+            Number(node.tok.value)
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
@@ -408,21 +523,24 @@ class Interpreter:
             return res
         return res.success(number.set_pos(node.pos_start, node.pos_end))
 
-    def visit_IfNode(self, node:IfNode, context=None):
+    def visit_IfNode(self, node: IfNode, context=None):
         res = RTResult()
 
         for condition, expr in node.cases:
             condition_value = res.register(self.visit(condition, context))
-            if res.error: return res
+            if res.error:
+                return res
 
             if condition_value.is_true():
                 expr_value = res.register(self.visit(expr, context))
-                if res.error: return res
+                if res.error:
+                    return res
                 return res.success(expr_value)
 
-        if node.else_case: 
+        if node.else_case:
             else_value = res.register(self.visit(node.else_case, context))
-            if res.error: return res
+            if res.error:
+                return res
             return res.success(else_value)
 
         return res.success(None)
@@ -431,14 +549,17 @@ class Interpreter:
         res = RTResult()
 
         start_value = res.register(self.visit(node.start_value_node, context))
-        if res.error: return res
+        if res.error:
+            return res
 
         end_value = res.register(self.visit(node.end_value_node, context))
-        if res.error: return res
+        if res.error:
+            return res
 
         if node.step_value_node:
             step_value = res.register(self.visit(node.step_value_node, context))
-            if res.error: return res
+            if res.error:
+                return res
         else:
             step_value = Number(1)
 
@@ -454,7 +575,8 @@ class Interpreter:
             i += step_value.value
 
             res.register(self.visit(node.body_node, context))
-            if res.error: return res
+            if res.error:
+                return res
 
         return res.success(None)
 
@@ -463,14 +585,53 @@ class Interpreter:
 
         while True:
             condition = res.register(self.visit(node.condition_node, context))
-            if res.error: return res
+            if res.error:
+                return res
 
-            if not condition.is_true(): break
+            if not condition.is_true():
+                break
 
             res.register(self.visit(node.body_node, context))
-            if res.error: return res
+            if res.error:
+                return res
 
         return res.success(None)
+
+    def visit_FuncDefNode(self, node: FuncDefNode, context: Context):
+        res = RTResult()
+
+        func_name = node.var_name_tok.value if node.var_name_tok else None
+        body_node = node.body_node
+        arg_names = [arg_name.value for arg_name in node.arg_name_toks]
+        func_value = (
+            Function(func_name, body_node, arg_names)
+            .set_context(context)
+            .set_pos(node.pos_start, node.pos_end)
+        )
+
+        if node.var_name_tok:
+            context.symbol_table.set(func_name, func_value)
+
+        return res.success(func_value)
+
+    def visit_CallNode(self, node: CallNode, context: Context):
+        res = RTResult()
+        args = []
+
+        value_to_call = res.register(self.visit(node.node_to_call, context))
+        if res.error:
+            return res
+        value_to_call = value_to_call.copy().set_pos(node.pos_start, node.pos_end)
+
+        for arg_node in node.arg_nodes:
+            args.append(res.register(self.visit(arg_node, context)))
+            if res.error:
+                return res
+
+        return_value = res.register(value_to_call.execute(args))
+        if res.error:
+            return res
+        return res.success(return_value)
 
 
 global_symbol_table = SymbolTable()

@@ -26,6 +26,8 @@ class TT:
     GT = "GT"
     LTE = "LTE"
     GTE = "GTE"
+    COMMA = "COMMA"
+    ARROW = "ARROW"
     EOF = "EOF"
 
 
@@ -42,6 +44,7 @@ KEYWORDS = [
     "to",
     "step",
     "while",
+    "func",
 ]
 
 
