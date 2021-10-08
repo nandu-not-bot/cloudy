@@ -56,8 +56,8 @@ class Lexer:
             elif self.current_char == "+":
                 tokens.append(Token(TT.PLUS, pos_start=self.pos))
                 self.advance()
-            elif self.current_char == "\"":
-                string, error = self.make_string()
+            elif (quote := self.current_char) in {"'", '"'}:
+                string, error = self.make_string(quote)
                 if error:  # To avoid unlcosed strings
                     return [], error 
                 tokens.append(string)
@@ -167,7 +167,7 @@ class Lexer:
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
-    def make_string(self):
+    def make_string(self, quote:str):
         string = ""
         pos_start = self.pos.copy()
         self.advance()
@@ -175,6 +175,9 @@ class Lexer:
         escape_characters = {
             "n": "\n",
             "t": "\t",
+            "'": "\'",
+            "\"": "\"",
+            "\\": "\\"
         }
 
         while self.current_char != "\"" and self.current_char is not None:
@@ -185,10 +188,10 @@ class Lexer:
                 string += self.current_char
             self.advance()
 
-            if self.current_char == "\"":
+            if self.current_char == quote:
                 break
         else:
-            return [], ExpectedCharError(pos_start, self.pos, "'\"'")
+            return [], ExpectedCharError(pos_start, self.pos, f"'{quote}'")
 
         self.advance()
         return Token(TT.STRING, string, pos_start, self.pos), None
