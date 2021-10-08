@@ -56,6 +56,11 @@ class Lexer:
             elif self.current_char == "+":
                 tokens.append(Token(TT.PLUS, pos_start=self.pos))
                 self.advance()
+            elif self.current_char == "\"":
+                string, error = self.make_string()
+                if error:  # To avoid unlcosed strings
+                    return [], error 
+                tokens.append(string)
             elif self.current_char == "-":
                 tokens.append(self.make_arrow_or_minus())
             elif self.current_char == "*":
@@ -161,3 +166,30 @@ class Lexer:
             tok_type = new_type
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
+
+    def make_string(self):
+        string = ""
+        pos_start = self.pos.copy()
+        self.advance()
+
+        escape_characters = {
+            "n": "\n",
+            "t": "\t",
+        }
+
+        while self.current_char != "\"" and self.current_char is not None:
+            if self.current_char == "\\":
+                self.advance()
+                string += escape_characters.get(self.current_char, self.current_char)
+            else:
+                string += self.current_char
+            self.advance()
+
+            if self.current_char == "\"":
+                break
+        else:
+            return [], ExpectedCharError(pos_start, self.pos, "'\"'")
+
+        self.advance()
+        return Token(TT.STRING, string, pos_start, self.pos), None
+

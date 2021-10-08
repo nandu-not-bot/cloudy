@@ -5,7 +5,7 @@ from .parser import (
     CallNode,
     FuncDefNode,
     Parser,
-    AtomNode,
+    NumberNode,
     BinOpNode,
     UnaryOpNode,
     VarAccessNode,
@@ -66,7 +66,6 @@ class DataType:
         if not other:
             other = self
         return RTError(self.pos_start, other.pos_end, "Illegal operation", self.context)
-
 
 class Number(DataType):
     def __init__(self, value: int):
@@ -343,6 +342,31 @@ class Bool(DataType):
     def __repr__(self):
         return str(self.value).lower()
 
+class String(DataType):
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def __add__(self, other):
+        if isinstance(other, String):
+            return String(self.value + other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+    def __mul__(self, other):
+        if isinstance(other, Number):
+            return String(self.value * other.value).set_context(self.context), None
+        else:
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+    def is_true(self):
+        return bool(self.value)
+
+    def copy(self):
+        return String(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
+
+    def __repr__(self) -> str:
+        return f"{self.value!r}"
 
 class Function(DataType):
     def __init__(self, name, body_node: BinOpNode, arg_names: list):
@@ -424,9 +448,23 @@ class Interpreter:
     def no_visit_method(self, node):
         raise Exception(f"No visit_{type(node).__name__}")
 
-    def visit_AtomNode(self, node: AtomNode, context: Context):
+    def visit_NumberNode(self, node: NumberNode, context: Context):
         return RTResult().success(
             Number(node.tok.value)
+            .set_context(context)
+            .set_pos(node.pos_start, node.pos_end)
+        )
+    
+    def visit_BoolNode(self, node: NumberNode, context: Context):
+        return RTResult().success(
+            Bool(node.tok.value)
+            .set_context(context)
+            .set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_StringNode(self, node: NumberNode, context: Context):
+        return RTResult().success(
+            String(node.tok.value)
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )

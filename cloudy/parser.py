@@ -3,7 +3,7 @@ from .utils import TT
 from .errors import InvalidSyntaxError
 
 
-class AtomNode:
+class NumberNode:
     def __init__(self, tok: Token):
         self.tok = tok
 
@@ -13,6 +13,25 @@ class AtomNode:
     def __repr__(self):
         return f"{self.tok}"
 
+class BoolNode:
+    def __init__(self, tok: Token):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f"{self.tok}"
+
+class StringNode:
+    def __init__(self, tok: Token):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
+
+    def __repr__(self):
+        return f"{self.tok}"
 
 class VarAccessNode:
     def __init__(self, var_name_tok: Token):
@@ -23,7 +42,7 @@ class VarAccessNode:
 
 
 class VarAssignNode:
-    def __init__(self, var_name_tok: Token, value_node: AtomNode):
+    def __init__(self, var_name_tok: Token, value_node: NumberNode):
         self.var_name_tok = var_name_tok
         self.value_node = value_node
 
@@ -32,7 +51,7 @@ class VarAssignNode:
 
 
 class BinOpNode:
-    def __init__(self, left_node: AtomNode, op_tok: Token, right_node: AtomNode):
+    def __init__(self, left_node: NumberNode, op_tok: Token, right_node: NumberNode):
         self.left_node = left_node
         self.op_tok = op_tok
         self.right_node = right_node
@@ -45,7 +64,7 @@ class BinOpNode:
 
 
 class UnaryOpNode:
-    def __init__(self, op_tok: Token, node: AtomNode):
+    def __init__(self, op_tok: Token, node: NumberNode):
         self.op_tok = op_tok
         self.node = node
 
@@ -212,10 +231,20 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type in (TT.INT, TT.FLOAT, TT.BOOL):
+        if tok.type in (TT.INT, TT.FLOAT):
             res.register_advancement()
             self.advance()
-            return res.success(AtomNode(tok))
+            return res.success(NumberNode(tok))
+
+        elif tok.type in (TT.BOOL):
+            res.register_advancement()
+            self.advance()
+            return res.success(BoolNode(tok))
+
+        elif tok.type in (TT.STRING):
+            res.register_advancement()
+            self.advance()
+            return res.success(StringNode(tok))
 
         elif tok.type == TT.IDENTIFIER:
             res.register_advancement()

@@ -15,7 +15,7 @@ power           : call ((MULT|DIV) factor)*
 
 call            : atom (LPAR (expr (COMMA expr)*)? RPAR)?
 
-atom            : INT|FLOAT|IDENTIFIER|BOOL
+atom            : INT|FLOAT|IDENTIFIER|BOOL|STR
                 : LPAR expr RPAR
                 : if-expr
                 : for-expr

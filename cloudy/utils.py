@@ -8,6 +8,7 @@ class TT:
     INT = "INT"
     FLOAT = "FLOAT"
     BOOL = "BOOL"
+    STRING = "STR"    
     IDENTIFIER = "IDENTIFIER"
     KEYWORD = "KEYWORD"
     EQ = "EQ"
