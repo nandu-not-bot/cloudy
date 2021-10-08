@@ -3,6 +3,7 @@ import string
 DIGITS = "01234567890"
 LETTERS = string.ascii_letters + "_"
 
+
 class TT:
     INT = "INT"
     FLOAT = "FLOAT"
@@ -27,7 +28,22 @@ class TT:
     GTE = "GTE"
     EOF = "EOF"
 
-KEYWORDS = ["var", "and", "or", "not", "if", "then", "elif", "else"]
+
+KEYWORDS = [
+    "var",
+    "and",
+    "or",
+    "not",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "for",
+    "to",
+    "step",
+    "while",
+]
+
 
 class Position:
     def __init__(self, idx: int, ln: int, col: int, fn: str, ftxt: str):
@@ -50,14 +66,16 @@ class Position:
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
 
+
 def string_with_arrows(text, pos_start, pos_end):
-    result = ''
+    result = ""
 
     # Calculate indices
-    idx_start = max(text.rfind('\n', 0, pos_start.idx), 0)
-    idx_end = text.find('\n', idx_start + 1)
-    if idx_end < 0: idx_end = len(text)
-    
+    idx_start = max(text.rfind("\n", 0, pos_start.idx), 0)
+    idx_end = text.find("\n", idx_start + 1)
+    if idx_end < 0:
+        idx_end = len(text)
+
     # Generate each line
     line_count = pos_end.ln - pos_start.ln + 1
     for i in range(line_count):
@@ -67,12 +85,13 @@ def string_with_arrows(text, pos_start, pos_end):
         col_end = pos_end.col if i == line_count - 1 else len(line) - 1
 
         # Append to result
-        result += line + '\n'
-        result += ' ' * col_start + '^' * (col_end - col_start)
+        result += line + "\n"
+        result += " " * col_start + "^" * (col_end - col_start)
 
         # Re-calculate indices
         idx_start = idx_end
-        idx_end = text.find('\n', idx_start + 1)
-        if idx_end < 0: idx_end = len(text)
+        idx_end = text.find("\n", idx_start + 1)
+        if idx_end < 0:
+            idx_end = len(text)
 
-    return result.replace('\t', '')
+    return result.replace("\t", "")

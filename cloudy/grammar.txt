@@ -16,7 +16,14 @@ power           : factor ((MULT|DIV) factor)*
 atom            : INT|FLOAT|IDENTIFIER|BOOL
                 : LPAR expr RPAR
                 : if-expr
+                : for-expr
+                : while-exp
 
 if-expr         : KEYWORD:if expr KEYWORD:then expr
                 : (KEYWORD:elif expr KEYWORD:then expr)*
                 : (KEYWORD:else expr)? 
+
+for-expr        : KEYWORD:for INDENTIFIER EQ expr KEYWORD:to expr
+                  (KEYWORD:skip expr)? KEYWORD:then expr
+
+while-expr      : KEYWORD:while expr KEYWORD:then expr
