@@ -4,6 +4,7 @@ from .lexer import Lexer
 from .parser import (
     CallNode,
     FuncDefNode,
+    ListNode,
     Parser,
     NumberNode,
     BinOpNode,
@@ -67,13 +68,18 @@ class DataType:
             other = self
         return RTError(self.pos_start, other.pos_end, "Illegal operation", self.context)
 
+
 class Number(DataType):
     def __init__(self, value: int):
         self.value = value
         super().__init__()
 
     def copy(self):
-        return Number(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return (
+            Number(self.value)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -337,10 +343,15 @@ class Bool(DataType):
         return self.value
 
     def copy(self):
-        return Bool(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return (
+            Bool(self.value)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
 
     def __repr__(self):
         return str(self.value).lower()
+
 
 class String(DataType):
     def __init__(self, value):
@@ -363,10 +374,70 @@ class String(DataType):
         return bool(self.value)
 
     def copy(self):
-        return String(self.value).set_context(self.context).set_pos(self.pos_start, self.pos_end)
+        return (
+            String(self.value)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
 
     def __repr__(self) -> str:
         return f"{self.value!r}"
+
+
+class List(DataType):
+    def __init__(self, elements: list):
+        super().__init__()
+        self.elements = elements
+
+    def __add__(self, other):
+        new_list = self.copy()
+        new_list.elements.append(other)
+        return new_list, None
+
+    def __sub__(self, other):
+        if not isinstance(other, Number):
+            return None, DataType.illegal_operation(self, other)
+
+        new_list = self.copy()
+        try:
+            new_list.elements.pop(other.value)
+            return new_list, None
+        except:
+            return None, RTError(
+                self.pos_start,
+                self.pos_end,
+                "Element at this index could not be removed because index is out of range.",
+            )
+
+    def __mul__(self, other):
+        if not isinstance(other, List):
+            return None, DataType.illegal_operation(self.pos_start, other.pos_end)
+
+        new_list = self.copy()
+        new_list.elements.extend(other.elements)
+        return new_list, None
+
+    def __truediv__(self, other):
+        if not isinstance(other, Number):
+            return None, DataType.illegal_operation(self, other)
+        try:
+            return self.elements[other.value], None
+        except:
+            return None, RTError(
+                self.pos_start,
+                self.pos_end,
+                "Element at this index could not be retrieved because index is out of range.",
+            )
+
+    def copy(self):
+        return (
+            List(self.elements[:])
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+    def __repr__(self):
+        return f"{self.elements!r}"
 
 class Function(DataType):
     def __init__(self, name, body_node: BinOpNode, arg_names: list):
@@ -454,7 +525,7 @@ class Interpreter:
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
-    
+
     def visit_BoolNode(self, node: NumberNode, context: Context):
         return RTResult().success(
             Bool(node.tok.value)
@@ -467,6 +538,19 @@ class Interpreter:
             String(node.tok.value)
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_ListNode(self, node: ListNode, context: Context):
+        res = RTResult()
+        elements = []
+
+        for element_node in node.element_nodes:
+            elements.append(res.register(self.visit(element_node, context)))
+            if res.error:
+                return res
+
+        return res.success(
+            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_VarAccessNode(self, node: VarAccessNode, context: Context):
@@ -585,6 +669,7 @@ class Interpreter:
 
     def visit_ForNode(self, node: ForNode, context: Context):
         res = RTResult()
+        elements = []
 
         start_value = res.register(self.visit(node.start_value_node, context))
         if res.error:
@@ -612,14 +697,17 @@ class Interpreter:
             context.symbol_table.set(node.var_name_tok.value, Number(i))
             i += step_value.value
 
-            res.register(self.visit(node.body_node, context))
+            elements.append(res.register(self.visit(node.body_node, context)))
             if res.error:
                 return res
 
-        return res.success(None)
+        return res.success(
+            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
 
     def visit_WhileNode(self, node: WhileNode, context: Context):
         res = RTResult()
+        elements = []
 
         while True:
             condition = res.register(self.visit(node.condition_node, context))
@@ -629,11 +717,13 @@ class Interpreter:
             if not condition.is_true():
                 break
 
-            res.register(self.visit(node.body_node, context))
+            elements.append(res.register(self.visit(node.body_node, context)))
             if res.error:
                 return res
 
-        return res.success(None)
+        return res.success(
+            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
 
     def visit_FuncDefNode(self, node: FuncDefNode, context: Context):
         res = RTResult()

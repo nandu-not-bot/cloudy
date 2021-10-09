@@ -74,6 +74,11 @@ class Lexer:
                 self.advance()
             elif self.current_char == ")":
                 tokens.append(Token(TT.RPAR, pos_start=self.pos))
+            elif self.current_char == "[":
+                tokens.append(Token(TT.LSQUARE, pos_start=self.pos))
+                self.advance()
+            elif self.current_char == "]":
+                tokens.append(Token(TT.RSQUARE, pos_start=self.pos))
                 self.advance()
             elif self.current_char == ",":
                 tokens.append(Token(TT.COMMA, pos_start=self.pos))
