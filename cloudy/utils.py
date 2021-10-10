@@ -31,17 +31,21 @@ class TT:
     GTE = "GTE"
     COMMA = "COMMA"
     ARROW = "ARROW"
+    NEWLINE = "NEWLINE"
     EOF = "EOF"
 
     SINGLE_CHAR_TOK = {
-        "+" : PLUS,
-        "%" : MODU,
-        "(" : LPAR,
-        ")" : RPAR,
-        "[" : LSQUARE,
-        "]" : RSQUARE,
-        "," : COMMA
+        "+": PLUS,
+        "%": MODU,
+        "(": LPAR,
+        ")": RPAR,
+        "[": LSQUARE,
+        "]": RSQUARE,
+        ",": COMMA,
+        "\n": NEWLINE,
+        ";": NEWLINE,
     }
+
 
 KEYWORDS = [
     "var",
@@ -57,6 +61,7 @@ KEYWORDS = [
     "step",
     "while",
     "func",
+    "end",
 ]
 
 

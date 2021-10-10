@@ -486,10 +486,13 @@ class BaseFunction(DataType):
 
 
 class Function(BaseFunction):
-    def __init__(self, name, body_node: BinOpNode, arg_names: list):
+    def __init__(
+        self, name, body_node: BinOpNode, arg_names: list, should_return_null: bool
+    ):
         super().__init__(name)
         self.body_node = body_node
         self.arg_names = arg_names
+        self.should_return_null = should_return_null
 
     def execute(self, args):
         res = RTResult()
@@ -504,10 +507,12 @@ class Function(BaseFunction):
         if res.error:
             return res
 
-        return res.success(value)
+        return res.success(Number.null if self.should_return_null else value)
 
     def copy(self):
-        copy = Function(self.name, self.body_node, self.arg_names)
+        copy = Function(
+            self.name, self.body_node, self.arg_names, self.should_return_null
+        )
         copy.set_context(self.context)
         copy.set_pos(self.pos_start, self.pos_end)
         return copy
@@ -629,6 +634,7 @@ class BuiltInFunction(BaseFunction):
 
         list_.elements.append(value)
         return RTResult().success(Number.null)
+
     execute_append.arg_names = ["list", "value"]
 
     def execute_pop(self, exec_context):
@@ -658,15 +664,16 @@ class BuiltInFunction(BaseFunction):
         try:
             element = list_.elements.pop(index.value)
         except:
-            return RTResult().faliure(RTError(
-                self.pos_start, self.pos_end, "Index is out of range."
-            ))
+            return RTResult().faliure(
+                RTError(self.pos_start, self.pos_end, "Index is out of range.")
+            )
         return RTResult().success(Number.null)
-    execute_pop.arg_names = ['list', 'index']
+
+    execute_pop.arg_names = ["list", "index"]
 
     def execute_extend(self, exec_context):
-        list1 = exec_context.symbol_table.get('list1')
-        list2 = exec_context.symbol_table.get('list2')
+        list1 = exec_context.symbol_table.get("list1")
+        list2 = exec_context.symbol_table.get("list2")
 
         if not (isinstance(list1, List) and isinstance(list2, List)):
             return RTResult().faliure(
@@ -680,7 +687,9 @@ class BuiltInFunction(BaseFunction):
 
         list1.elements.extend(list2.elements)
         return RTResult().success(Number.null)
-    execute_extend.arg_names = ['list1', 'list2']
+
+    execute_extend.arg_names = ["list1", "list2"]
+
 
 BuiltInFunction.print = BuiltInFunction("print")
 BuiltInFunction.print_ret = BuiltInFunction("print_ret")
@@ -695,6 +704,7 @@ BuiltInFunction.is_function = BuiltInFunction("is_function")
 BuiltInFunction.append = BuiltInFunction("append")
 BuiltInFunction.pop = BuiltInFunction("pop")
 BuiltInFunction.extend = BuiltInFunction("extend")
+
 
 class SymbolTable:
     def __init__(self, parent=None):
@@ -860,7 +870,7 @@ class Interpreter:
     def visit_IfNode(self, node: IfNode, context=None):
         res = RTResult()
 
-        for condition, expr in node.cases:
+        for condition, expr, should_return_null in node.cases:
             condition_value = res.register(self.visit(condition, context))
             if res.error:
                 return res
@@ -869,15 +879,16 @@ class Interpreter:
                 expr_value = res.register(self.visit(expr, context))
                 if res.error:
                     return res
-                return res.success(expr_value)
+                return res.success(Number.null if should_return_null else expr_value)
 
         if node.else_case:
-            else_value = res.register(self.visit(node.else_case, context))
+            expr, should_return_null = node.else_case
+            else_value = res.register(self.visit(expr, context))
             if res.error:
                 return res
-            return res.success(else_value)
+            return res.success(Number.null if should_return_null else else_value)
 
-        return res.success(None)
+        return res.success(Number.null)
 
     def visit_ForNode(self, node: ForNode, context: Context):
         res = RTResult()
@@ -914,7 +925,11 @@ class Interpreter:
                 return res
 
         return res.success(
-            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+            Number.null
+            if node.should_return_null
+            else List(elements)
+            .set_context(context)
+            .set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_WhileNode(self, node: WhileNode, context: Context):
@@ -934,7 +949,11 @@ class Interpreter:
                 return res
 
         return res.success(
-            List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+            Number.null
+            if node.should_return_null
+            else List(elements)
+            .set_context(context)
+            .set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_FuncDefNode(self, node: FuncDefNode, context: Context):
@@ -944,7 +963,7 @@ class Interpreter:
         body_node = node.body_node
         arg_names = [arg_name.value for arg_name in node.arg_name_toks]
         func_value = (
-            Function(func_name, body_node, arg_names)
+            Function(func_name, body_node, arg_names, node.should_return_null)
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
@@ -971,7 +990,11 @@ class Interpreter:
         return_value = res.register(value_to_call.execute(args))
         if res.error:
             return res
-        return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
+        return_value = (
+            return_value.copy()
+            .set_pos(node.pos_start, node.pos_end)
+            .set_context(context)
+        )
         return res.success(return_value)
 
 
@@ -990,7 +1013,6 @@ global_symbol_table.set("is_list", BuiltInFunction.is_list)
 global_symbol_table.set("append", BuiltInFunction.append)
 global_symbol_table.set("pop", BuiltInFunction.pop)
 global_symbol_table.set("extend", BuiltInFunction.extend)
-
 
 
 def run(fn: str, text: str):

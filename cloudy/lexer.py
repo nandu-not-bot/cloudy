@@ -53,7 +53,7 @@ class Lexer:
                 case num if num in DIGITS:
                     tokens.append(self.make_number())
                 case letter if letter in LETTERS:
-                    tokens.append(self.make_letter())
+                    tokens.append(self.make_identifier())
                 case ("'"|'"') as quote:
                     string, error = self.make_string(quote)
                     if error:
@@ -66,6 +66,7 @@ class Lexer:
                     tokens.append(token)
                 case char if char in TT.SINGLE_CHAR_TOK:
                     tokens.append(Token(TT.SINGLE_CHAR_TOK[char], pos_start=self.pos))
+                    self.advance()
                 case "-":
                     tokens.append(self.make_arrow_or_minus())
                 case "*":
