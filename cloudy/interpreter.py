@@ -1,3 +1,5 @@
+import os
+
 from .utils import Position, TT
 from .errors import RTError
 from .lexer import Lexer
@@ -209,6 +211,9 @@ class Number(DataType):
 
     def __repr__(self):
         return str(self.value)
+
+
+Number.null = Number(0)
 
 
 class Bool(DataType):
@@ -431,7 +436,7 @@ class List(DataType):
 
     def copy(self):
         return (
-            List(self.elements[:])
+            List(self.elements)
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
@@ -439,36 +444,63 @@ class List(DataType):
     def __repr__(self):
         return f"{self.elements!r}"
 
-class Function(DataType):
-    def __init__(self, name, body_node: BinOpNode, arg_names: list):
+
+class BaseFunction(DataType):
+    def __init__(self, name):
         super().__init__()
-        self.name = name
+        self.name = name or "<anonymous>"
+
+    def generate_new_context(self):
+        new_context = Context(self.name, self.context, self.pos_start)
+        new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+        return new_context
+
+    def check_args(self, arg_names, args):
+        res = RTResult()
+
+        if len(args) != len(arg_names):
+            return res.faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    f"Function {self.name} takes in {len(arg_names)} but {len(args)} passed instead.",
+                )
+            )
+
+        return res.success(None)
+
+    def populate_args(self, arg_names, args, exec_context):
+        for i, arg in enumerate(args):
+            arg_name = arg_names[i]
+            arg_value = arg
+            arg_value.set_context(exec_context)
+            exec_context.symbol_table.set(arg_name, arg_value)
+
+    def check_and_populate_args(self, arg_names, args, exec_context):
+        res = RTResult()
+        res.register(self.check_args(arg_names, args))
+        if res.error:
+            return res
+        self.populate_args(arg_names, args, exec_context)
+        return res.success(None)
+
+
+class Function(BaseFunction):
+    def __init__(self, name, body_node: BinOpNode, arg_names: list):
+        super().__init__(name)
         self.body_node = body_node
         self.arg_names = arg_names
 
     def execute(self, args):
         res = RTResult()
         interpreter = Interpreter()
+        exec_context = self.generate_new_context()
 
-        new_context = Context(self.name, self.context, self.pos_start)
-        new_context.symbol_table = SymbolTable(new_context.parent.symbol_table)
+        res.register(self.check_and_populate_args(self.arg_names, args, exec_context))
+        if res.error:
+            return res
 
-        if len(args) != len(self.arg_names):
-            return res.faliure(
-                RTError(
-                    self.pos_start,
-                    self.pos_end,
-                    f"Function {self.name} takes in {len(self.arg_names)} but {len(args)} passed instead.",
-                )
-            )
-
-        for i, arg in enumerate(args):
-            arg_name = self.arg_names[i]
-            arg_value = arg
-            arg_value.set_context(new_context)
-            new_context.symbol_table.set(arg_name, arg_value)
-
-        value = res.register(interpreter.visit(self.body_node, new_context))
+        value = res.register(interpreter.visit(self.body_node, exec_context))
         if res.error:
             return res
 
@@ -483,6 +515,186 @@ class Function(DataType):
     def __repr__(self):
         return f"<function {self.name}>"
 
+
+class BuiltInFunction(BaseFunction):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def execute(self, args):
+        res = RTResult()
+        exec_context = self.generate_new_context()
+
+        method_name = f"execute_{self.name}"
+        method = getattr(self, method_name, self.no_visit_method)
+
+        res.register(self.check_and_populate_args(method.arg_names, args, exec_context))
+        if res.error:
+            return res
+
+        return_value = res.register(method(exec_context))
+        if res.error:
+            return res
+        return res.success(return_value)
+
+    def copy(self):
+        return (
+            BuiltInFunction(self.name)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+    def no_visit_method(self):
+        raise Exception(f"No execute_{self.name} method defined.")
+
+    # BUILT-INS
+
+    def execute_print(self, exec_context):
+        print(str(exec_context.symbol_table.get("value")))
+        return RTResult().success(Number.null)
+
+    execute_print.arg_names = ["value"]
+
+    def execute_print_ret(self, exec_context):
+        return RTResult().success(String(str(exec_context.symbol_table.get("value"))))
+
+    execute_print_ret.arg_names = ["value"]
+
+    def execute_input(self, exec_context):
+        text = input()
+        return RTResult().success(String(text))
+
+    execute_input.arg_names = []
+
+    def execute_input_int(self, exec_context):
+        while True:
+            text = input()
+            try:
+                number = int(text)
+                break
+            except ValueError:
+                print(f"'{text}' must be an integer. Try again!")
+        return RTResult().success(Number(number))
+
+    execute_input_int.arg_names = []
+
+    def execute_clear(self, exec_context):
+        os.system("cls|clear")
+        return RTResult().success(Number.null)
+
+    execute_clear.arg_names = []
+
+    def execute_is_number(self, exec_context):
+        return_value = isinstance(exec_context.symbol_table.get("value"), Number)
+        return RTResult().success(Bool(return_value))
+
+    execute_is_number.arg_names = ["value"]
+
+    def execute_is_string(self, exec_context):
+        return_value = isinstance(exec_context.symbol_table.get("value"), String)
+        return RTResult().success(Bool(return_value))
+
+    execute_is_string.arg_names = ["value"]
+
+    def execute_is_bool(self, exec_context):
+        return_value = isinstance(exec_context.symbol_table.get("value"), Bool)
+        return RTResult().succegss(Bool(return_value))
+
+    execute_is_bool.arg_names = ["value"]
+
+    def execute_is_list(self, exec_context):
+        return_value = isinstance(exec_context.symbol_table.get("value"), List)
+        return RTResult().success(Bool(return_value))
+
+    execute_is_list.arg_names = ["value"]
+
+    def execute_is_function(self, exec_context):
+        return_value = isinstance(exec_context.symbol_table.get("value"), BaseFunction)
+        return RTResult().success(Bool(return_value))
+
+    execute_is_function.arg_names = ["value"]
+
+    def execute_append(self, exec_context):
+        list_ = exec_context.symbol_table.get("list")
+        value = exec_context.symbol_table.get("value")
+
+        if not isinstance(list_, List):
+            return RTResult().faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "First argument must be a list.",
+                    exec_context,
+                )
+            )
+
+        list_.elements.append(value)
+        return RTResult().success(Number.null)
+    execute_append.arg_names = ["list", "value"]
+
+    def execute_pop(self, exec_context):
+        list_ = exec_context.symbol_table.get("list")
+        index = exec_context.symbol_table.get("index")
+
+        if not isinstance(list_, List):
+            return RTResult().faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "First argument must be a list.",
+                    exec_context,
+                )
+            )
+
+        if not isinstance(index, Number):
+            return RTResult().faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "Second argument must be an integer.",
+                    exec_context,
+                )
+            )
+
+        try:
+            element = list_.elements.pop(index.value)
+        except:
+            return RTResult().faliure(RTError(
+                self.pos_start, self.pos_end, "Index is out of range."
+            ))
+        return RTResult().success(Number.null)
+    execute_pop.arg_names = ['list', 'index']
+
+    def execute_extend(self, exec_context):
+        list1 = exec_context.symbol_table.get('list1')
+        list2 = exec_context.symbol_table.get('list2')
+
+        if not (isinstance(list1, List) and isinstance(list2, List)):
+            return RTResult().faliure(
+                RTError(
+                    self.pos_start,
+                    self.pos_end,
+                    "Both arguments must be lists",
+                    exec_context,
+                )
+            )
+
+        list1.elements.extend(list2.elements)
+        return RTResult().success(Number.null)
+    execute_extend.arg_names = ['list1', 'list2']
+
+BuiltInFunction.print = BuiltInFunction("print")
+BuiltInFunction.print_ret = BuiltInFunction("print_ret")
+BuiltInFunction.input = BuiltInFunction("input")
+BuiltInFunction.input_int = BuiltInFunction("input_int")
+BuiltInFunction.clear = BuiltInFunction("clear")
+BuiltInFunction.is_number = BuiltInFunction("is_number")
+BuiltInFunction.is_string = BuiltInFunction("is_string")
+BuiltInFunction.is_list = BuiltInFunction("is_list")
+BuiltInFunction.is_bool = BuiltInFunction("is_bool")
+BuiltInFunction.is_function = BuiltInFunction("is_function")
+BuiltInFunction.append = BuiltInFunction("append")
+BuiltInFunction.pop = BuiltInFunction("pop")
+BuiltInFunction.extend = BuiltInFunction("extend")
 
 class SymbolTable:
     def __init__(self, parent=None):
@@ -568,7 +780,7 @@ class Interpreter:
                 )
             )
 
-        value = value.copy().set_pos(node.pos_start, node.pos_end)
+        value = value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(value)
 
     def visit_VarAssignNode(self, node: VarAssignNode, context: Context):
@@ -759,11 +971,26 @@ class Interpreter:
         return_value = res.register(value_to_call.execute(args))
         if res.error:
             return res
+        return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(return_value)
 
 
 global_symbol_table = SymbolTable()
-global_symbol_table.set("null", Number(0))
+global_symbol_table.set("null", Number.null)
+global_symbol_table.set("print", BuiltInFunction.print)
+global_symbol_table.set("print_ret", BuiltInFunction.print_ret)
+global_symbol_table.set("input", BuiltInFunction.input)
+global_symbol_table.set("input_int", BuiltInFunction.input_int)
+global_symbol_table.set("clear", BuiltInFunction.clear)
+global_symbol_table.set("is_number", BuiltInFunction.is_number)
+global_symbol_table.set("is_string", BuiltInFunction.is_string)
+global_symbol_table.set("is_bool", BuiltInFunction.is_bool)
+global_symbol_table.set("is_function", BuiltInFunction.is_function)
+global_symbol_table.set("is_list", BuiltInFunction.is_list)
+global_symbol_table.set("append", BuiltInFunction.append)
+global_symbol_table.set("pop", BuiltInFunction.pop)
+global_symbol_table.set("extend", BuiltInFunction.extend)
+
 
 
 def run(fn: str, text: str):

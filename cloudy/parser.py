@@ -216,11 +216,9 @@ class Parser:
         if self.current_tok.type == TT.LPAR:
             res.register_advancement()
             self.advance()
+            arg_nodes =[]
 
-            if self.current_tok.type == TT.RPAR:
-                res.register_advancement()
-                self.advance()
-            else:
+            if self.current_tok.type != TT.RPAR:
                 arg_nodes = [res.register(self.expr())]
 
                 if res.error:

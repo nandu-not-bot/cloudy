@@ -47,57 +47,44 @@ class Lexer:
         tokens = []
 
         while self.current_char is not None:
-            if self.current_char in " \t":
-                self.advance()
-            elif self.current_char in DIGITS:
-                tokens.append(self.make_number())
-            elif self.current_char in LETTERS:
-                tokens.append(self.make_identifier())
-            elif self.current_char == "+":
-                tokens.append(Token(TT.PLUS, pos_start=self.pos))
-                self.advance()
-            elif (quote := self.current_char) in {"'", '"'}:
-                string, error = self.make_string(quote)
-                if error:  # To avoid unlcosed strings
-                    return [], error 
-                tokens.append(string)
-            elif self.current_char == "-":
-                tokens.append(self.make_arrow_or_minus())
-            elif self.current_char == "*":
-                tokens.append(self.make_double_char_token(TT.MULT, TT.POW, "*"))
-            elif self.current_char == "/":
-                tokens.append(self.make_double_char_token(TT.DIV, TT.FDIV, "/"))
-            elif self.current_char == "%":
-                tokens.append(Token(TT.MODU, pos_start=self.pos))
-            elif self.current_char == "(":
-                tokens.append(Token(TT.LPAR, pos_start=self.pos))
-                self.advance()
-            elif self.current_char == ")":
-                tokens.append(Token(TT.RPAR, pos_start=self.pos))
-            elif self.current_char == "[":
-                tokens.append(Token(TT.LSQUARE, pos_start=self.pos))
-                self.advance()
-            elif self.current_char == "]":
-                tokens.append(Token(TT.RSQUARE, pos_start=self.pos))
-                self.advance()
-            elif self.current_char == ",":
-                tokens.append(Token(TT.COMMA, pos_start=self.pos))
-                self.advance()
-            elif self.current_char == "!":
-                tok, error = self.make_not_equals()
-                if error: return [], error
-                tokens.append(tok)
-            elif self.current_char == "=":
-                tokens.append(self.make_equals())
-            elif self.current_char == "<":
-                tokens.append(self.make_less_than())
-            elif self.current_char == ">":
-                tokens.append(self.make_greater_than())
-            else:
-                pos_start = self.pos.copy()
-                char = self.current_char
-                self.advance()
-                return [], IllegalCharError(pos_start, self.pos, f'"{char}"')
+            match self.current_char:
+                case " " | "\t":
+                    self.advance()
+                case num if num in DIGITS:
+                    tokens.append(self.make_number())
+                case letter if letter in LETTERS:
+                    tokens.append(self.make_letter())
+                case ("'"|'"') as quote:
+                    string, error = self.make_string(quote)
+                    if error:
+                        return [], error 
+                    tokens.append(string)
+                case "!":
+                    token, error = self.make_not_equals()
+                    if error:
+                        return [], error
+                    tokens.append(token)
+                case char if char in TT.SINGLE_CHAR_TOK:
+                    tokens.append(Token(TT.SINGLE_CHAR_TOK[char], pos_start=self.pos))
+                case "-":
+                    tokens.append(self.make_arrow_or_minus())
+                case "*":
+                    tokens.append(self.make_double_char_token(TT.MULT, TT.POW, "*"))
+                case "/":
+                    tokens.append(self.make_double_char_token(TT.DIV, TT.FDIV, "/"))
+                case "=":
+                    tokens.append(self.make_double_char_token(TT.EQ, TT.EE, "="))
+                case "=":
+                    tokens.append(self.make_double_char_token(TT.EQ, TT.EE, "="))
+                case "<":
+                    tokens.append(self.make_double_char_token(TT.LT, TT.LTE, "="))
+                case ">":
+                    tokens.append(self.make_double_char_token(TT.GT, TT.GTE, "="))
+                case _:
+                    pos_start = self.pos.copy()
+                    char = self.current_char
+                    self.advance()
+                    return [], IllegalCharError(pos_start, self.pos, f'"{char}"')
 
         tokens.append(Token(TT.EOF, pos_start=self.pos))
         return tokens, None
@@ -148,18 +135,6 @@ class Lexer:
 
         self.advance()
         return None, ExpectedCharError(pos_start, self.pos, "'=' (after '!')")
-
-    def make_equals(self) -> tuple[Token, Error]:
-        return self.make_double_char_token(TT.EQ, TT.EE, "=") 
-
-    def make_less_than(self) -> tuple[Token, Error]:
-        return self.make_double_char_token(TT.LT, TT.LTE, "=") 
-
-    def make_greater_than(self) -> tuple[Token, Error]:
-        return self.make_double_char_token(TT.GT, TT.GTE, "=") 
-
-    def make_arrow_or_minus(self):
-        return self.make_double_char_token(TT.MINUS, TT.ARROW, ">")
 
     def make_double_char_token(self, default_type, new_type, second_char):
         pos_start = self.pos.copy()

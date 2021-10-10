@@ -33,6 +33,15 @@ class TT:
     ARROW = "ARROW"
     EOF = "EOF"
 
+    SINGLE_CHAR_TOK = {
+        "+" : PLUS,
+        "%" : MODU,
+        "(" : LPAR,
+        ")" : RPAR,
+        "[" : LSQUARE,
+        "]" : RSQUARE,
+        "," : COMMA
+    }
 
 KEYWORDS = [
     "var",
