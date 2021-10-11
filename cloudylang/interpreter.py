@@ -817,7 +817,7 @@ BuiltInFunction.run = BuiltInFunction("run")
 class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
-        self.parent: dict = None
+        self.parent: dict = parent
 
     def get(self, name):
         value = self.symbols.get(name)
