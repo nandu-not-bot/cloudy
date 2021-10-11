@@ -62,6 +62,9 @@ KEYWORDS = [
     "while",
     "func",
     "end",
+    "break",
+    "continue",
+    "return",
 ]
 
 

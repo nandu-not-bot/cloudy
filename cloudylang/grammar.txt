@@ -3,7 +3,12 @@
 ?               : Optional
 --------------------------------------------------------------
 
-statement       : NEWLINE* expr (NEWLINE+ expr)* NEWLINE*
+statements      : NEWLINE* statement (NEWLINE+ statement)* NEWLINE*
+
+statement       : KEYWORD:return expr?
+                : KEYWORD:continue
+                : KEYWORD:break
+                : expr
 
 expr            : KEYWORD:var IDENTIFIER EQ expr
                 : comp-expr ((KEYWORD:and|KEYWORD:or) comp-expr)*
@@ -33,15 +38,15 @@ atom            : INT|FLOAT|IDENTIFIER|BOOL|STR
 list-expr       : LSQUARE (expr (COMMA expr)*)? RSQUARE
 
 if-expr         : KEYWORD:if expr KEYWORD:then
-                  (expr if-expr-b|if-expr-c?)
+                  (statement if-expr-b|if-expr-c?)
                 | (NEWLINE statements KEYWORD:end|if-expr-b|if-expr-c) 
 
 if-expr-b       : KEYWORD:elif expr KEYWORD:then
-                  (expr if-expr-b|if-expr-c?)
+                  (statement if-expr-b|if-expr-c?)
                 | (NEWLINE statements KEYWORD:end|if-expr-b|if-expr-c) 
 
 if-expr-c       : KEYWORD:else
-                  expr
+                  statements
                 | (NEWLINE statements KEYWORD:enD)
 
 for-expr        : KEYWORD:for INDENTIFIER EQ expr KEYWORD:to expr

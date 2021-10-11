@@ -140,14 +140,14 @@ class ForNode:
         end_value_node: BinOpNode,
         step_value_node: BinOpNode,
         body_node: BinOpNode,
-        shoud_return_null: bool,
+        should_return_null: bool,
     ):
         self.var_name_tok = var_name_tok
         self.start_value_node = start_value_node
         self.end_value_node = end_value_node
         self.step_value_node = step_value_node
         self.body_node = body_node
-        self.shoud_return_null = shoud_return_null
+        self.should_return_null = should_return_null
 
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.body_node.pos_end
@@ -159,7 +159,7 @@ class WhileNode:
     ):
         self.condition_node = condition_node
         self.body_node = body_node
-        self.shoud_return_null = shoud_return_null
+        self.should_return_null = shoud_return_null
 
         self.pos_start = self.condition_node.pos_start
         self.pos_end = self.body_node.pos_end
@@ -171,12 +171,12 @@ class FuncDefNode:
         var_name_tok: Token,
         arg_name_toks: list[Token],
         body_node: BinOpNode,
-        should_return_null: bool,
+        should_auto_return: bool,
     ):
         self.var_name_tok = var_name_tok
         self.arg_name_toks = arg_name_toks
         self.body_node = body_node
-        self.should_return_null = should_return_null
+        self.should_auto_return = should_auto_return
 
         if var_name_tok:
             self.pos_start = self.var_name_tok.pos_start
@@ -200,6 +200,22 @@ class CallNode:
         else:
             self.pos_end = self.node_to_call.pos_end
 
+
+class ReturnNode:
+    def __init__(self, node_to_return: NumberNode, pos_start: Position, pos_end: Position):
+        self.node_to_return = node_to_return
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+class ContinueNode:
+    def __init__(self, pos_start: Position, pos_end: Position):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+class BreakNode:
+    def __init__(self, pos_start: Position, pos_end: Position):
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -242,7 +258,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-        statement = res.register(self.expr())
+        statement = res.register(self.statement())
         if res.error:
             return res
         statements.append(statement)
@@ -260,14 +276,49 @@ class Parser:
 
             if not more_statements:
                 break
-            statement = res.try_register(self.expr())
+
+            statement = res.try_register(self.statement())
             if not statement:
                 self.reverse(res.to_reverse_count)
                 more_statements = True
+                continue
 
             statements.append(statement)
 
         return res.success(ListNode(statements, pos_start, self.current_tok.pos_end))
+
+    def statement(self):
+        res = ParseResult()
+        pos_start = self.current_tok.pos_start.copy()
+
+        if self.current_tok.matches(TT.KEYWORD, "return"):
+            res.register_advancement()
+            self.advance()
+
+            expr = res.try_register(self.expr())
+            if not expr:
+                self.reverse(res.to_reverse_count)
+            return res.success(ReturnNode(expr, pos_start, self.current_tok.pos_start.copy()))
+        elif self.current_tok.matches(TT.KEYWORD, "continue"):
+            res.register_advancement()
+            self.advance()
+            return res.success(ContinueNode(pos_start, self.current_tok.pos_start.copy()))
+        elif self.current_tok.matches(TT.KEYWORD, "break"):
+            res.register_advancement()
+            self.advance()
+            return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
+
+        expr = res.register(self.expr())
+        if res.error: 
+            return res.faliure(
+                InvalidSyntaxError(
+                    pos_start, 
+                    self.current_tok.pos_end, 
+                    "Expected 'var', 'for', 'while', 'func', 'break', 'return, 'continue', int, float, identifier, '+', '-', '[' or '('",
+                )
+            )
+
+        return res.success(expr)
 
     def expr(self):
         res = ParseResult()
@@ -407,7 +458,8 @@ class Parser:
                     self.current_tok.pos_end,
                     "Expected ',' or ')'",
                 )
-
+            res.register_advancement()
+            self.advance()
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
 
@@ -578,7 +630,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
             else:
-                expr = res.register(self.expr())
+                expr = res.register(self.statement())
                 if res.error:
                     return res
                 else_case = (expr, False)
@@ -591,7 +643,7 @@ class Parser:
         else_case = None
 
         if self.current_tok.matches(TT.KEYWORD, "elif"):
-            all_cases = res.register(self.if_expr_b)
+            all_cases = res.register(self.if_expr_b())
             if res.error:
                 return res
             cases, else_case = all_cases
@@ -654,7 +706,7 @@ class Parser:
                 new_cases, else_case = all_cases
                 cases.extend(new_cases)
         else:
-            expr = res.register(self.expr())
+            expr = res.register(self.statement())
             if res.error:
                 return res
             cases.append((condition, expr, False))
@@ -663,6 +715,7 @@ class Parser:
             if res.error:
                 return res
             new_cases, else_case = all_cases
+            cases.extend(new_cases)
 
         return res.success((cases, else_case))
 
@@ -769,7 +822,7 @@ class Parser:
                 ForNode(var_name, start_value, end_value, step_value, body, True)
             )
 
-        body = res.register(self.expr())
+        body = res.register(self.statement())
         if res.error:
             return res
 
@@ -828,7 +881,7 @@ class Parser:
 
             return res.success(WhileNode(condition, body, True))
 
-        body = res.register(self.expr())
+        body = res.register(self.statement())
         if res.error:
             return res
 
@@ -930,7 +983,7 @@ class Parser:
                 return res
 
             return res.success(
-                FuncDefNode(var_name_tok, arg_name_toks, node_to_return, False)
+                FuncDefNode(var_name_tok, arg_name_toks, node_to_return, True)
             )
 
         if self.current_tok.type != TT.NEWLINE:
@@ -961,7 +1014,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        return res.success(FuncDefNode(var_name_tok, arg_name_toks, body, True))
+        return res.success(FuncDefNode(var_name_tok, arg_name_toks, body, False))
 
     def bin_op(self, func_a: callable, ops: tuple[Token], func_b=None):
         if func_b is None:

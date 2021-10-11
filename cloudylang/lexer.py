@@ -48,6 +48,8 @@ class Lexer:
 
         while self.current_char is not None:
             match self.current_char:
+                case "#":
+                    self.skip_comment()
                 case " " | "\t":
                     self.advance()
                 case num if num in DIGITS:
@@ -68,7 +70,7 @@ class Lexer:
                     tokens.append(Token(TT.SINGLE_CHAR_TOK[char], pos_start=self.pos))
                     self.advance()
                 case "-":
-                    tokens.append(self.make_arrow_or_minus())
+                    tokens.append(self.make_double_char_token(TT.MINUS, TT.ARROW, ">"))
                 case "*":
                     tokens.append(self.make_double_char_token(TT.MULT, TT.POW, "*"))
                 case "/":
@@ -177,3 +179,10 @@ class Lexer:
         self.advance()
         return Token(TT.STRING, string, pos_start, self.pos), None
 
+    def skip_comment(self):
+        self.advance()
+
+        while self.current_char != '\n':
+            self.advance()
+
+        self.advance()
