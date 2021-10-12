@@ -425,6 +425,7 @@ class String(DataType):
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
+        
     def __repr__(self) -> str:
         return f"{self.value!r}"
 
