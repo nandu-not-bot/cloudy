@@ -481,8 +481,9 @@ class Parser:
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
 
-    def index_expr(self):
+    def index_expr(self, data_node):
         res = ParseResult()
+        iterations = 0
 
         if self.current_tok.type != TT.LSQUARE:
             return res.faliure(
@@ -491,24 +492,31 @@ class Parser:
                 )
             )
 
-        res.register_advancement()
-        self.advance()
+        while self.current_tok.type == TT.LSQUARE:
+            res.register_advancement()
+            self.advance()
 
-        index = res.register(self.arith_expr())
-        if res.error:
-            return res
+            index = res.register(self.arith_expr())
+            if res.error:
+                return res
+            if iterations == 0:
+                index_node = IndexNode(data_node, index)
+            else:
+                index_node = IndexNode(index_node, index)
 
-        if self.current_tok.type != TT.RSQUARE:
-            return res.faliure(
-                InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ']'"
+            if self.current_tok.type != TT.RSQUARE:
+                return res.faliure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start, self.current_tok.pos_end, "Expected ']'"
+                    )
                 )
-            )
 
-        res.register_advancement()
-        self.advance()
+            res.register_advancement()
+            self.advance()
 
-        return res.success(index)
+            iterations += 1
+
+        return res.success(index_node)
 
     def atom(self):  # sourcery no-metrics
         res = ParseResult()
@@ -518,40 +526,40 @@ class Parser:
             res.register_advancement()
             self.advance()
             if self.current_tok.type == TT.LSQUARE:
-                index = res.register(self.index_expr())
+                index_node = res.register(self.index_expr(NumberNode(tok)))
                 if res.error:
                     return res
-                return res.success(IndexNode(NumberNode(tok), index))
+                return res.success(index_node)
             return res.success(NumberNode(tok))
 
         elif tok.type in (TT.BOOL):
             res.register_advancement()
             self.advance()
             if self.current_tok.type == TT.LSQUARE:
-                index = res.register(self.index_expr())
+                index_node = res.register(self.index_expr(BoolNode(tok)))
                 if res.error:
                     return res
-                return res.success(IndexNode(BoolNode(tok), index))
+                return res.success(index_node)
             return res.success(BoolNode(tok))
 
         elif tok.type in (TT.STRING):
             res.register_advancement()
             self.advance()
             if self.current_tok.type == TT.LSQUARE:
-                index = res.register(self.index_expr())
+                index_node = res.register(self.index_expr(StringNode(tok)))
                 if res.error:
                     return res
-                return res.success(IndexNode(StringNode(tok), index))
+                return res.success(index_node)
             return res.success(StringNode(tok))
 
         elif tok.type == TT.IDENTIFIER:
             res.register_advancement()
             self.advance()
             if self.current_tok.type == TT.LSQUARE:
-                index = res.register(self.index_expr())
+                index_node = res.register(self.index_expr(VarAccessNode(tok)))
                 if res.error:
                     return res
-                return res.success(IndexNode(VarAccessNode(tok), index))
+                return res.success(index_node)
             return res.success(VarAccessNode(tok))
 
         elif tok.type == TT.LPAR:
@@ -655,14 +663,11 @@ class Parser:
         self.advance()
 
         if self.current_tok.type == TT.LSQUARE:
-            index = res.register(self.index_expr())
+            index_node = res.register(self.index_expr(ListNode(element_nodes, pos_start, self.current_tok.pos_end.copy())))
             if res.error:
                 return res
             return res.success(
-                IndexNode(
-                    ListNode(element_nodes, pos_start, self.current_tok.pos_end.copy()),
-                    index,
-                )
+                index_node
             )
 
         return res.success(
