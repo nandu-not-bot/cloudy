@@ -63,7 +63,7 @@ class ExpectedCharError(Error):
         super().__init__(pos_start, pos_end, "Expected Character", details)
 
 
-class IndexError(Error):
+class OutOfRangeError(Error):
     def __init__(self, pos_start: Position, pos_end: Position, dtype: str):
         super().__init__(
             pos_start, pos_end, "Index Error", f"{dtype.lower()} index out of range"

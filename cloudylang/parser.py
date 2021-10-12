@@ -44,6 +44,7 @@ class ListNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+
 class VarAccessNode:
     def __init__(self, var_name_tok: Token):
         self.var_name_tok = var_name_tok
@@ -200,21 +201,35 @@ class CallNode:
             self.pos_end = self.node_to_call.pos_end
 
 
+class IndexNode:
+    def __init__(self, data_node: ListNode, index_node: NumberNode):
+        self.data_node = data_node
+        self.index_node = index_node
+
+        self.pos_start = data_node.pos_start
+        self.pos_end = index_node.pos_end
+
+
 class ReturnNode:
-    def __init__(self, node_to_return: NumberNode, pos_start: Position, pos_end: Position):
+    def __init__(
+        self, node_to_return: NumberNode, pos_start: Position, pos_end: Position
+    ):
         self.node_to_return = node_to_return
         self.pos_start = pos_start
         self.pos_end = pos_end
+
 
 class ContinueNode:
     def __init__(self, pos_start: Position, pos_end: Position):
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+
 class BreakNode:
     def __init__(self, pos_start: Position, pos_end: Position):
         self.pos_start = pos_start
         self.pos_end = pos_end
+
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -297,22 +312,26 @@ class Parser:
             expr = res.try_register(self.expr())
             if not expr:
                 self.reverse(res.to_reverse_count)
-            return res.success(ReturnNode(expr, pos_start, self.current_tok.pos_start.copy()))
+            return res.success(
+                ReturnNode(expr, pos_start, self.current_tok.pos_start.copy())
+            )
         elif self.current_tok.matches(TT.KEYWORD, "continue"):
             res.register_advancement()
             self.advance()
-            return res.success(ContinueNode(pos_start, self.current_tok.pos_start.copy()))
+            return res.success(
+                ContinueNode(pos_start, self.current_tok.pos_start.copy())
+            )
         elif self.current_tok.matches(TT.KEYWORD, "break"):
             res.register_advancement()
             self.advance()
             return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
 
         expr = res.register(self.expr())
-        if res.error: 
+        if res.error:
             return res.faliure(
                 InvalidSyntaxError(
-                    pos_start, 
-                    self.current_tok.pos_end, 
+                    pos_start,
+                    self.current_tok.pos_end,
                     "Expected 'var', 'for', 'while', 'func', 'break', 'return, 'continue', int, float, identifier, '+', '-', '[' or '('",
                 )
             )
@@ -462,6 +481,35 @@ class Parser:
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
 
+    def index_expr(self):
+        res = ParseResult()
+
+        if self.current_tok.type != TT.LSQUARE:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '['"
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        index = res.register(self.arith_expr())
+        if res.error:
+            return res
+
+        if self.current_tok.type != TT.RSQUARE:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ']'"
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        return res.success(index)
+
     def atom(self):  # sourcery no-metrics
         res = ParseResult()
         tok = self.current_tok
@@ -469,21 +517,41 @@ class Parser:
         if tok.type in (TT.INT, TT.FLOAT):
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT.LSQUARE:
+                index = res.register(self.index_expr())
+                if res.error:
+                    return res
+                return res.success(IndexNode(NumberNode(tok), index))
             return res.success(NumberNode(tok))
 
         elif tok.type in (TT.BOOL):
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT.LSQUARE:
+                index = res.register(self.index_expr())
+                if res.error:
+                    return res
+                return res.success(IndexNode(BoolNode(tok), index))
             return res.success(BoolNode(tok))
 
         elif tok.type in (TT.STRING):
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT.LSQUARE:
+                index = res.register(self.index_expr())
+                if res.error:
+                    return res
+                return res.success(IndexNode(StringNode(tok), index))
             return res.success(StringNode(tok))
 
         elif tok.type == TT.IDENTIFIER:
             res.register_advancement()
             self.advance()
+            if self.current_tok.type == TT.LSQUARE:
+                index = res.register(self.index_expr())
+                if res.error:
+                    return res
+                return res.success(IndexNode(VarAccessNode(tok), index))
             return res.success(VarAccessNode(tok))
 
         elif tok.type == TT.LPAR:
@@ -585,6 +653,18 @@ class Parser:
 
         res.register_advancement()
         self.advance()
+
+        if self.current_tok.type == TT.LSQUARE:
+            index = res.register(self.index_expr())
+            if res.error:
+                return res
+            return res.success(
+                IndexNode(
+                    ListNode(element_nodes, pos_start, self.current_tok.pos_end.copy()),
+                    index,
+                )
+            )
+
         return res.success(
             ListNode(element_nodes, pos_start, self.current_tok.pos_end.copy())
         )

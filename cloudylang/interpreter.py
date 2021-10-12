@@ -1,9 +1,10 @@
 import os
 
 from .utils import Position, TT
-from .errors import RTError, IndexError
+from .errors import RTError, OutOfRangeError
 from .lexer import Lexer, Token
 from .parser import (
+    IndexNode,
     Parser,
     BreakNode,
     CallNode,
@@ -121,6 +122,10 @@ class Number(DataType):
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
+
+    @property
+    def is_float(self):
+        return "." in str(self.value)
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -425,7 +430,15 @@ class String(DataType):
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
-        
+
+    def is_index(self, idx: Number):
+        return -len(self.value) <= idx.value < len(self.value)
+
+    def __getitem__(self, idx: Number):
+        val = self.copy()
+        val.value = self.value[idx.value]
+        return val
+
     def __repr__(self) -> str:
         return f"{self.value!r}"
 
@@ -484,6 +497,12 @@ class List(DataType):
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
+
+    def is_index(self, idx: Number):
+        return -len(self.elements) <= idx.value < len(self.elements)
+
+    def __getitem__(self, idx: Number):
+        return self.elements[idx.value]
 
     def __repr__(self):
         return f"{self.elements!r}"
@@ -753,6 +772,7 @@ class BuiltInFunction(BaseFunction):
             )
 
         return RTResult().success(Number(len(list_.elements)))
+
     execute_len.arg_names = ["list"]
 
     def execute_run(self, exec_context):
@@ -873,6 +893,37 @@ class Interpreter:
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
+
+    def visit_IndexNode(self, node: IndexNode, context: Context):
+        res = RTResult()
+        data = res.register(self.visit(node.data_node, context))
+        if res.should_return():
+            return res
+        if not isinstance(data, (String, List)):
+            return res.faliure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    f"Type '{data.__name__}' is not subscriptable",
+                )
+            )
+
+        index: Number = res.register(self.visit(node.index_node, context))
+        if res.should_return():
+            return res
+
+        if type(index) is not Number or index.is_float:
+            return res.faliure(
+                RTError(node.index_node.pos_start, node.index_node.pos_end, "Index can only be of type 'int'", context)
+            )
+
+        if not data.is_index(index):
+            return res.faliure(
+                OutOfRangeError(node.index_node.pos_start, node.index_node.pos_end, type(data).__name__)
+            )
+
+        return_value = data[index]
+        return res.success(return_value)
 
     def visit_ListNode(self, node: ListNode, context: Context):
         res = RTResult()

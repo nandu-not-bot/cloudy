@@ -22,7 +22,7 @@ power           : call ((MULT|DIV) factor)*
 
 call            : atom (LPAR (expr (COMMA expr)*)? RPAR)?
 
-atom            : INT|FLOAT|IDENTIFIER|BOOL|STR
+atom            : INT|FLOAT|IDENTIFIER|BOOL|STR (LSQUARE arith_expr RSQUARE)?
                 : LPAR expr RPAR
                 : list-expr (LSQUARE arith_expr RSQUARE)?
                 : if-expr

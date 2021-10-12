@@ -1,14 +1,11 @@
-var a = input()
-var b = input()
-
-print("a is " + a)
-print("b is " + b)
-
-var c = a
-var a = b
-var b = c
-
-"lmao?"
-
-print("a is " + a)
-print("b is " + b)
+for i = 0 to 50 then
+    if i % 3 == 0 and i % 5 == 0 then
+        print("fizzbuzz")
+    elif i % 3 == 0 then
+        print("fizz")
+    elif i % 5 == 0 then
+        print("buzz")
+    else
+        print(i)
+    end
+end
