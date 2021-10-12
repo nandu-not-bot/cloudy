@@ -50,6 +50,7 @@ class Lexer:
             match self.current_char:
                 case "#":
                     self.skip_comment()
+                    self.advance()
                 case " " | "\t":
                     self.advance()
                 case num if num in DIGITS:
@@ -174,7 +175,8 @@ class Lexer:
             if self.current_char == quote:
                 break
         else:
-            return [], ExpectedCharError(pos_start, self.pos, f"'{quote}'")
+            if self.current_char != "\"":
+                return [], ExpectedCharError(pos_start, self.pos, f"'{quote}'")
 
         self.advance()
         return Token(TT.STRING, string, pos_start, self.pos), None
@@ -182,7 +184,7 @@ class Lexer:
     def skip_comment(self):
         self.advance()
 
-        while self.current_char != '\n':
+        while self.current_char not in {"\n", None}:
             self.advance()
 
         self.advance()

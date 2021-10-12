@@ -1,5 +1,6 @@
 from .utils import Position, string_with_arrows
 
+
 class Error:
     def __init__(
         self, pos_start: Position, pos_end: Position, error_name: str, details: str
@@ -20,9 +21,11 @@ class IllegalCharError(Error):
     def __init__(self, pos_start: Position, pos_end: Position, details: str):
         super().__init__(pos_start, pos_end, "Illegal Character", details)
 
+
 class ExpectedCharError(Error):
     def __init__(self, pos_start: Position, pos_end: Position, details: str):
         super().__init__(pos_start, pos_end, "Expected Character", details)
+
 
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start: Position, pos_end: Position, details: str):
@@ -54,6 +57,14 @@ class RTError(Error):
 
         return "Traceback (most recent call last):\n" + result
 
+
 class ExpectedCharError(Error):
     def __init__(self, pos_start: Position, pos_end: Position, details: str):
         super().__init__(pos_start, pos_end, "Expected Character", details)
+
+
+class IndexError(Error):
+    def __init__(self, pos_start: Position, pos_end: Position, dtype: str):
+        super().__init__(
+            pos_start, pos_end, "Index Error", f"{dtype.lower()} index out of range"
+        )

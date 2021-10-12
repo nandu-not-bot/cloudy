@@ -44,7 +44,6 @@ class ListNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
-
 class VarAccessNode:
     def __init__(self, var_name_tok: Token):
         self.var_name_tok = var_name_tok
@@ -463,7 +462,7 @@ class Parser:
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
 
-    def atom(self):
+    def atom(self):  # sourcery no-metrics
         res = ParseResult()
         tok = self.current_tok
 

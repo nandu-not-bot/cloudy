@@ -1,18 +1,19 @@
 import os
 
 from .utils import Position, TT
-from .errors import RTError
-from .lexer import Lexer
+from .errors import RTError, IndexError
+from .lexer import Lexer, Token
 from .parser import (
+    Parser,
     BreakNode,
     CallNode,
     ContinueNode,
     FuncDefNode,
     ListNode,
-    Parser,
     NumberNode,
     BinOpNode,
     ReturnNode,
+    StringNode,
     UnaryOpNode,
     VarAccessNode,
     VarAssignNode,
@@ -251,7 +252,12 @@ class Number(DataType):
         return str(self.value)
 
 
-Number.null = Number(0)
+class Null(DataType):
+    def __init__(self):
+        super().__init__()
+
+    def copy(self):
+        return Null()
 
 
 class Bool(DataType):
@@ -413,9 +419,6 @@ class String(DataType):
         else:
             return None, DataType.illegal_operation(self.pos_start, other.pos_end)
 
-    def is_true(self):
-        return bool(self.value)
-
     def copy(self):
         return (
             String(self.value)
@@ -551,7 +554,7 @@ class Function(BaseFunction):
         return_value = (
             (value if self.should_auto_return else None)
             or res.function_return_value
-            or Number.null
+            or Null()
         )
 
         return res.success(return_value)
@@ -602,7 +605,7 @@ class BuiltInFunction(BaseFunction):
 
     def execute_print(self, exec_context):
         print(str(exec_context.symbol_table.get("value")))
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_print.arg_names = ["value"]
 
@@ -612,7 +615,7 @@ class BuiltInFunction(BaseFunction):
     execute_print_ret.arg_names = ["value"]
 
     def execute_input(self, exec_context):
-        text = input()
+        text = input("> ")
         return RTResult().success(String(text))
 
     execute_input.arg_names = []
@@ -631,7 +634,7 @@ class BuiltInFunction(BaseFunction):
 
     def execute_clear(self, exec_context):
         os.system("cls|clear")
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_clear.arg_names = []
 
@@ -680,7 +683,7 @@ class BuiltInFunction(BaseFunction):
             )
 
         list_.elements.append(value)
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_append.arg_names = ["list", "value"]
 
@@ -714,7 +717,7 @@ class BuiltInFunction(BaseFunction):
             return RTResult().faliure(
                 RTError(self.pos_start, self.pos_end, "Index is out of range.")
             )
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_pop.arg_names = ["list", "index"]
 
@@ -733,7 +736,7 @@ class BuiltInFunction(BaseFunction):
             )
 
         list1.elements.extend(list2.elements)
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_extend.arg_names = ["list1", "list2"]
 
@@ -793,7 +796,7 @@ class BuiltInFunction(BaseFunction):
                 )
             )
 
-        return RTResult().success(Number.null)
+        return RTResult().success(Null())
 
     execute_run.arg_names = ["fn"]
 
@@ -812,6 +815,7 @@ BuiltInFunction.append = BuiltInFunction("append")
 BuiltInFunction.pop = BuiltInFunction("pop")
 BuiltInFunction.extend = BuiltInFunction("extend")
 BuiltInFunction.run = BuiltInFunction("run")
+BuiltInFunction.len = BuiltInFunction("len")
 
 
 class SymbolTable:
@@ -863,7 +867,7 @@ class Interpreter:
             .set_pos(node.pos_start, node.pos_end)
         )
 
-    def visit_StringNode(self, node: NumberNode, context: Context):
+    def visit_StringNode(self, node: StringNode, context: Context):
         return RTResult().success(
             String(node.tok.value)
             .set_context(context)
@@ -967,7 +971,7 @@ class Interpreter:
         error = None
 
         if node.op_tok.type == TT.MINUS:
-            number, error = -number
+            number = -number
         elif node.op_tok.matches(TT.KEYWORD, "not"):
             number, error = number.__not__()
 
@@ -987,16 +991,16 @@ class Interpreter:
                 expr_value = res.register(self.visit(expr, context))
                 if res.should_return():
                     return res
-                return res.success(Number.null if should_return_null else expr_value)
+                return res.success(Null() if should_return_null else expr_value)
 
         if node.else_case:
             expr, should_return_null = node.else_case
             else_value = res.register(self.visit(expr, context))
             if res.should_return():
                 return res
-            return res.success(Number.null if should_return_null else else_value)
+            return res.success(Null() if should_return_null else else_value)
 
-        return res.success(Number.null)
+        return res.success(Null())
 
     def visit_ForNode(self, node: ForNode, context: Context):
         res = RTResult()
@@ -1045,7 +1049,7 @@ class Interpreter:
             elements.append(value)
 
         return res.success(
-            Number.null
+            Null()
             if node.should_return_null
             else List(elements)
             .set_context(context)
@@ -1081,7 +1085,7 @@ class Interpreter:
             elements.append(value)
 
         return res.success(
-            Number.null
+            Null()
             if node.should_return_null
             else List(elements)
             .set_context(context)
@@ -1137,7 +1141,7 @@ class Interpreter:
             if res.should_return():
                 return res
         else:
-            value = Number.null
+            value = Null()
 
         return res.success_return(value)
 
@@ -1149,7 +1153,7 @@ class Interpreter:
 
 
 global_symbol_table = SymbolTable()
-global_symbol_table.set("null", Number.null)
+global_symbol_table.set("null", Null())
 global_symbol_table.set("print", BuiltInFunction.print)
 global_symbol_table.set("print_ret", BuiltInFunction.print_ret)
 global_symbol_table.set("input", BuiltInFunction.input)
@@ -1164,6 +1168,7 @@ global_symbol_table.set("append", BuiltInFunction.append)
 global_symbol_table.set("pop", BuiltInFunction.pop)
 global_symbol_table.set("extend", BuiltInFunction.extend)
 global_symbol_table.set("run", BuiltInFunction.run)
+global_symbol_table.set("len", BuiltInFunction.len)
 
 
 def run(fn: str, text: str):
@@ -1175,6 +1180,9 @@ def run(fn: str, text: str):
         return None, error
     if not tokens:
         return None, error
+
+    if len(tokens) == 1 and tokens[0].matches(TT.EOF, None):
+        return "", error
 
     # Generate AST
     parser = Parser(tokens)

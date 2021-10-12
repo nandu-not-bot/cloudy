@@ -1,0 +1,14 @@
+var a = input()
+var b = input()
+
+print("a is " + a)
+print("b is " + b)
+
+var c = a
+var a = b
+var b = c
+
+"lmao?"
+
+print("a is " + a)
+print("b is " + b)
