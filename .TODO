@@ -1,0 +1,12 @@
+"-" = delete feature
+"+" = add feature
+";" = modify feature
+ 
+PENDING:
+; Replace "->" with ":".
+- Remove "end" keyword. 
+    + Recognize indents instead.
+- Remove "var" keyword.
+
+COMPLETED:
+; Replace "then" keyword with ":".

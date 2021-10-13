@@ -759,12 +759,12 @@ class Parser:
         if res.error:
             return res
 
-        if not self.current_tok.matches(TT.KEYWORD, "then"):
+        if not self.current_tok.type == TT.COLON:
             return res.faliure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
                     self.current_tok.pos_end,
-                    "Expected 'then'",
+                    "Expected ':'",
                 )
             )
 
@@ -870,12 +870,12 @@ class Parser:
         else:
             step_value = None
 
-        if not self.current_tok.matches(TT.KEYWORD, "then"):
+        if self.current_tok.type != TT.COLON:
             return res.faliure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
                     self.current_tok.pos_end,
-                    "Expected 'then'",
+                    "Expected ':'",
                 )
             )
 
@@ -932,12 +932,12 @@ class Parser:
         if res.error:
             return res
 
-        if not self.current_tok.matches(TT.KEYWORD, "then"):
+        if self.current_tok.type != TT.COLON:
             return res.faliure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start,
                     self.current_tok.pos_end,
-                    "Expected 'then'",
+                    "Expected ':'",
                 )
             )
         res.register_advancement()

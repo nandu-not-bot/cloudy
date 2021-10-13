@@ -33,6 +33,7 @@ class TT:
     ARROW = "ARROW"
     NEWLINE = "NEWLINE"
     EOF = "EOF"
+    COLON = "COLON"
 
     SINGLE_CHAR_TOK = {
         "+": PLUS,
@@ -42,6 +43,7 @@ class TT:
         "[": LSQUARE,
         "]": RSQUARE,
         ",": COMMA,
+        ":": COLON,
         "\n": NEWLINE,
         ";": NEWLINE,
     }
@@ -53,7 +55,6 @@ KEYWORDS = [
     "or",
     "not",
     "if",
-    "then",
     "elif",
     "else",
     "for",

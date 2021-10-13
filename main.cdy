@@ -1,11 +1,11 @@
-for i = 0 to 50 then
-    if i % 3 == 0 and i % 5 == 0 then
-        print("fizzbuzz")
-    elif i % 3 == 0 then
-        print("fizz")
-    elif i % 5 == 0 then
-        print("buzz")
-    else
-        print(i)
-    end
+func range(start, stop)
+    return for i = start to stop: i
 end
+
+print("Start:")
+var start = input_int()
+
+print("Stop:")
+var stop = input_int()
+
+print(range(start, stop))
