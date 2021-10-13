@@ -30,13 +30,13 @@ class TT:
     LTE = "LTE"
     GTE = "GTE"
     COMMA = "COMMA"
-    ARROW = "ARROW"
     NEWLINE = "NEWLINE"
     EOF = "EOF"
     COLON = "COLON"
 
     SINGLE_CHAR_TOK = {
         "+": PLUS,
+        "-": MINUS,
         "%": MODU,
         "(": LPAR,
         ")": RPAR,
@@ -119,3 +119,83 @@ def string_with_arrows(text, pos_start, pos_end):
             idx_end = len(text)
 
     return result.replace("\t", "")
+
+
+class SymbolTable:
+    def __init__(self, parent=None):
+        self.symbols = {}
+        self.parent: dict = parent
+
+    def get(self, name):
+        value = self.symbols.get(name)
+        if value is None and self.parent:
+            return self.parent.get(name)
+        return value
+
+    def set(self, name: str, value):
+        self.symbols[name] = value
+
+    def remove(self, name):
+        del self.symbols[name]
+
+
+class Context:
+    def __init__(self, display_name: str, parent=None, parent_entry_pos=None):
+        self.display_name = display_name
+        self.parent = parent
+        self.parent_entry_pos = parent_entry_pos
+        self.symbol_table: SymbolTable = None
+
+
+class RTResult:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.value = None
+        self.error = None
+        self.function_return_value = None
+        self.loop_should_continue = False
+        self.loop_should_break = False
+
+    def register(self, res):
+        res: RTResult = res
+        self.function_return_value = res.function_return_value
+        self.loop_should_continue = res.loop_should_continue
+        self.loop_should_break = res.loop_should_break
+        if res.error:
+            self.error = res.error
+        return res.value
+
+    def success(self, value):  # sourcery skip: class-extract-method
+        self.reset()
+        self.value = value
+        return self
+
+    def success_return(self, value):
+        self.reset()
+        self.function_return_value = value
+        return self
+
+    def success_continue(self):
+        self.reset()
+        self.loop_should_continue = True
+        return self
+
+    def success_break(self):
+        self.reset()
+        self.loop_should_break = True
+        return self
+
+    def faliure(self, error):
+        self.reset()
+        self.error = error
+        return self
+
+    def should_return(self):
+        return (
+            self.error
+            or self.function_return_value
+            or self.loop_should_continue
+            or self.loop_should_break
+        )

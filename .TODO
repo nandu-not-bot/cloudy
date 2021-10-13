@@ -1,12 +1,21 @@
-"-" = delete feature
-"+" = add feature
-";" = modify feature
- 
+[-] = delete feature
+[+] = add feature
+[M] = modify feature
+
+
+
 PENDING:
-; Replace "->" with ":".
-- Remove "end" keyword. 
-    + Recognize indents instead.
-- Remove "var" keyword.
+=======
+
+[-] Remove "end" keyword. 
+    [+] Recognize indents instead.
+[-] Remove "var" keyword.
+[+] Add dictionaries.
+[+] Default arg support for functions.
+
 
 COMPLETED:
-; Replace "then" keyword with ":".
+=========
+
+[M] Replace "then" keyword with ":".
+[M] Replace "->" with ":".

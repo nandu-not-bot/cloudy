@@ -70,8 +70,6 @@ class Lexer:
                 case char if char in TT.SINGLE_CHAR_TOK:
                     tokens.append(Token(TT.SINGLE_CHAR_TOK[char], pos_start=self.pos))
                     self.advance()
-                case "-":
-                    tokens.append(self.make_double_char_token(TT.MINUS, TT.ARROW, ">"))
                 case "*":
                     tokens.append(self.make_double_char_token(TT.MULT, TT.POW, "*"))
                 case "/":

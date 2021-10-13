@@ -1058,25 +1058,21 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type == TT.ARROW:
-            res.register_advancement()
-            self.advance()
+        if self.current_tok.type != TT.COLON:
+            return res.faliure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+            ))
 
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type != TT.NEWLINE:
             node_to_return = res.register(self.expr())
             if res.error:
                 return res
 
             return res.success(
                 FuncDefNode(var_name_tok, arg_name_toks, node_to_return, True)
-            )
-
-        if self.current_tok.type != TT.NEWLINE:
-            return res.faliure(
-                InvalidSyntaxError(
-                    self.current_tok.pos_start,
-                    self.current_tok.pos_end,
-                    "Expected '->' or newline",
-                )
             )
 
         res.register_advancement()
