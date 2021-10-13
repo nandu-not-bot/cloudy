@@ -1,4 +1,4 @@
-from .coretypes import DataType
+from .coretypes import DataType, Int, Number
 from ..errors import RTError
 from ..utils import Context, RTResult, SymbolTable
 
@@ -40,3 +40,39 @@ class BaseFunction(DataType):
             return res
         self.populate_args(arg_names, args, exec_context)
         return res.success(None)
+
+class List(DataType):
+    def __init__(self, elements: list):
+        super().__init__()
+        self.elements = elements
+
+    def __add__(self, other):
+        if not isinstance(other, List):
+            return None, DataType.illegal_operation(other)
+        
+        new_list = self.copy()
+        return List(new_list.elements + other.elements), None
+
+    def __mul__(self, other):
+        if not isinstance(other, Int):
+            return None, DataType.illegal_operation(other)
+
+        new_list = self.copy()
+        new_list *= other
+        return new_list, None
+
+    def copy(self):
+        return (
+            List(self.elements)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+    def is_index(self, idx: Number):
+        return -len(self.elements) <= idx.value < len(self.elements)
+
+    def __getitem__(self, idx: Number):
+        return self.elements[idx.value]
+
+    def __repr__(self):
+        return f"{self.elements!r}"

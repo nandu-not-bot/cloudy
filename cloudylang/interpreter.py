@@ -1,10 +1,10 @@
 import os
 
-from .datatypes.coretypes import Null, Number, String, Bool, List
-from .datatypes.derivedtypes import BaseFunction
+from .datatypes.coretypes import NewNum, Null, Number, String, Bool
+from .datatypes.derivedtypes import BaseFunction, List
 from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
-from .lexer import Lexer, Token
+from .lexer import Lexer
 from .parser import (
     IndexNode,
     Parser,
@@ -127,7 +127,7 @@ class BuiltInFunction(BaseFunction):
                 break
             except ValueError:
                 print(f"'{text}' must be an integer. Try again!")
-        return RTResult().success(Number(number))
+        return RTResult().success(NewNum(number))
 
     execute_input_int.arg_names = []
 
@@ -251,9 +251,16 @@ class BuiltInFunction(BaseFunction):
                 )
             )
 
-        return RTResult().success(Number(len(list_.elements)))
+        return RTResult().success(NewNum(len(list_.elements)))
 
     execute_len.arg_names = ["list"]
+
+    def execute_type(self, exec_context):
+        obj = exec_context.symbol_table.get("obj")
+
+        return RTResult().success(String(type(obj).__name__.lower()))
+
+    execute_type.arg_names = ["obj"]
 
     def execute_run(self, exec_context):
         fn = exec_context.symbol_table.get("fn")
@@ -316,6 +323,7 @@ BuiltInFunction.pop = BuiltInFunction("pop")
 BuiltInFunction.extend = BuiltInFunction("extend")
 BuiltInFunction.run = BuiltInFunction("run")
 BuiltInFunction.len = BuiltInFunction("len")
+BuiltInFunction.type = BuiltInFunction("type")
 
 class Interpreter:
     def visit(self, node, context: Context) -> RTResult:
@@ -328,7 +336,7 @@ class Interpreter:
 
     def visit_NumberNode(self, node: NumberNode, context: Context):
         return RTResult().success(
-            Number(node.tok.value)
+            NewNum(node.tok.value)
             .set_context(context)
             .set_pos(node.pos_start, node.pos_end)
         )
@@ -523,7 +531,7 @@ class Interpreter:
             if res.should_return():
                 return res
         else:
-            step_value = Number(1)
+            step_value = NewNum(1)
 
         i = start_value.value
 
@@ -533,7 +541,7 @@ class Interpreter:
             condition = lambda: i > end_value.value
 
         while condition():
-            context.symbol_table.set(node.var_name_tok.value, Number(i))
+            context.symbol_table.set(node.var_name_tok.value, NewNum(i))
             i += step_value.value
 
             value = res.register(self.visit(node.body_node, context))
@@ -673,6 +681,7 @@ global_symbol_table.set("pop", BuiltInFunction.pop)
 global_symbol_table.set("extend", BuiltInFunction.extend)
 global_symbol_table.set("run", BuiltInFunction.run)
 global_symbol_table.set("len", BuiltInFunction.len)
+global_symbol_table.set("type", BuiltInFunction.type)
 
 
 def run(fn: str, text: str):

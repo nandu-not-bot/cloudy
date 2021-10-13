@@ -22,7 +22,7 @@ class DataType:
     def get_type_from_value(self):
         str_value = str(self.value)
         if str_value.isnumeric():
-            return Number(self.value)
+            return NewNum(self.value)
         elif str_value in {"True", "False"}:
             return Bool(self.value)
 
@@ -34,6 +34,12 @@ class DataType:
             other = self
         return RTError(self.pos_start, other.pos_end, "Illegal operation", self.context)
 
+class NewNum:
+    def __new__(cls, value):
+        if "." in str(value):
+            return Float(value)
+        else:
+            return Int(value)
 
 class Number(DataType):
     def __init__(self, value: int):
@@ -42,7 +48,7 @@ class Number(DataType):
 
     def copy(self):
         return (
-            Number(self.value)
+            NewNum(self.value)
             .set_context(self.context)
             .set_pos(self.pos_start, self.pos_end)
         )
@@ -53,19 +59,19 @@ class Number(DataType):
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value + other.value).set_context(self.context), None
+            return NewNum(self.value + other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
     def __sub__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value - other.value).set_context(self.context), None
+            return NewNum(self.value - other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
     def __mul__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value * other.value).set_context(self.context), None
+            return NewNum(self.value * other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
@@ -77,7 +83,7 @@ class Number(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Division by zero", self.context
             )
-        return Number(self.value / other.value).set_context(self.context), None
+        return NewNum(self.value / other.value).set_context(self.context), None
 
     def __floordiv__(self, other):
         if not isinstance(other, (Number, Bool)):
@@ -87,7 +93,7 @@ class Number(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Division by zero", self.context
             )
-        return Number(self.value // other.value).set_context(self.context), None
+        return NewNum(self.value // other.value).set_context(self.context), None
 
     def __mod__(self, other):
         if not isinstance(other, (Number, Bool)):
@@ -97,14 +103,14 @@ class Number(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Modulo by zero", self.context
             )
-        return Number(self.value % other.value).set_context(self.context), None
+        return NewNum(self.value % other.value).set_context(self.context), None
 
     def __neg__(self):
-        return Number(-self.value)
+        return NewNum(-self.value)
 
     def __pow__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value ** other.value).set_context(self.context), None
+            return NewNum(self.value ** other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
@@ -180,6 +186,13 @@ class Number(DataType):
     def __repr__(self):
         return str(self.value)
 
+class Float(Number):
+    def __init__(self, value):
+        super().__init__(value)
+
+class Int(Number):
+    def __init__(self, value):
+        super().__init__(value)
 
 class Null(DataType):
     def __init__(self):
@@ -196,19 +209,19 @@ class Bool(DataType):
 
     def __add__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value + other.value).set_context(self.context), None
+            return NewNum(self.value + other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
     def __sub__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value - other.value).set_context(self.context), None
+            return NewNum(self.value - other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
     def __mul__(self, other):
         if isinstance(other, (Number, Bool)):
-            return Number(self.value * other.value).set_context(self.context), None
+            return NewNum(self.value * other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
 
@@ -220,7 +233,7 @@ class Bool(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Division by zero", self.context
             )
-        return Number(self.value / other.value).set_context(self.context), None
+        return NewNum(self.value / other.value).set_context(self.context), None
 
     def __floordiv__(self, other):
         if not isinstance(other, (Number, Bool)):
@@ -230,7 +243,7 @@ class Bool(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Division by zero", self.context
             )
-        return Number(self.value // other.value).set_context(self.context), None
+        return NewNum(self.value // other.value).set_context(self.context), None
 
     def __mod__(self, other):
         if not isinstance(other, (Number, Bool)):
@@ -240,10 +253,10 @@ class Bool(DataType):
             return None, RTError(
                 other.pos_start, other.pos_end, "Modulo by zero", self.context
             )
-        return Number(self.value % other.value).set_context(self.context), None
+        return NewNum(self.value % other.value).set_context(self.context), None
 
     def __neg__(self):
-        return Number(-self.value)
+        return NewNum(-self.value)
 
     def __pow__(self, other):
         return None, DataType.illegal_operation(other)
@@ -368,66 +381,3 @@ class String(DataType):
 
     def __str__(self) -> str:
         return self.value
-
-
-class List(DataType):
-    def __init__(self, elements: list):
-        super().__init__()
-        self.elements = elements
-
-    def __add__(self, other):
-        new_list = self.copy()
-        new_list.elements.append(other)
-        return new_list, None
-
-    def __sub__(self, other):
-        if not isinstance(other, Number):
-            return None, DataType.illegal_operation(other)
-
-        new_list = self.copy()
-        try:
-            new_list.elements.pop(other.value)
-            return new_list, None
-        except:
-            return None, RTError(
-                self.pos_start,
-                self.pos_end,
-                "Element at this index could not be removed because index is out of range.",
-            )
-
-    def __mul__(self, other):
-        if not isinstance(other, List):
-            return None, DataType.illegal_operation(other)
-
-        new_list = self.copy()
-        new_list.elements.extend(other.elements)
-        return new_list, None
-
-    def __truediv__(self, other):
-        if not isinstance(other, Number):
-            return None, DataType.illegal_operation(other)
-        try:
-            return self.elements[other.value], None
-        except:
-            return None, RTError(
-                self.pos_start,
-                self.pos_end,
-                "Element at this index could not be retrieved because index is out of range.",
-            )
-
-    def copy(self):
-        return (
-            List(self.elements)
-            .set_context(self.context)
-            .set_pos(self.pos_start, self.pos_end)
-        )
-
-    def is_index(self, idx: Number):
-        return -len(self.elements) <= idx.value < len(self.elements)
-
-    def __getitem__(self, idx: Number):
-        return self.elements[idx.value]
-
-    def __repr__(self):
-        return f"{self.elements!r}"
-
