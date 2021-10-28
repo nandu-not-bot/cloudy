@@ -34,6 +34,57 @@ class DataType:
             other = self
         return RTError(self.pos_start, other.pos_end, "Illegal operation", self.context)
 
+    def __add__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __sub__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __mul__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __truediv__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __floordiv__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __mod__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __pow__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __eq__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __ne__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __lt__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __lte__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __gt__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __gte__(self, other):
+        return None, self.illegal_operation(other)
+    
+    def __and__(self, other):
+        return None, self.illegal_operation(other)
+    
+    def __or__(self, other):
+        return None, self.illegal_operation(other)
+
+    def __not__(self):
+        return None, self.illegal_operation()
+
+    def __neg__(self):
+        return None, self.illegal_operation()
+
 class NewNum:
     def __new__(cls, value):
         if "." in str(value):
@@ -130,7 +181,7 @@ class Number(DataType):
                 None,
             )
         else:
-            return None, DataType.illegal_operation(other)
+            return Bool(True).set_context(self.context), None
 
     def __lt__(self, other):
         if isinstance(other, (Number, Bool)):
@@ -138,7 +189,7 @@ class Number(DataType):
         else:
             return None, DataType.illegal_operation(other)
 
-    def __le__(self, other):
+    def __lte__(self, other):
         if isinstance(other, (Number, Bool)):
             return (
                 Bool(self.value <= other.value).set_context(self.context),
@@ -153,7 +204,7 @@ class Number(DataType):
         else:
             return None, DataType.illegal_operation(other)
 
-    def __ge__(self, other):
+    def __gte__(self, other):
         if isinstance(other, (Number, Bool)):
             return (
                 Bool(self.value >= other.value).set_context(self.context),
@@ -200,6 +251,24 @@ class Null(DataType):
 
     def copy(self):
         return Null()
+
+    def __eq__(self, other):
+        if isinstance(other, Null):
+            return Bool(True).set_context(self.context), None
+        else:
+            return Bool(False).set_context(self.context), None
+
+    def __ne__(self, other):
+        if isinstance(other, Null):
+            return Bool(False).set_context(self.context), None
+        else:
+            return Bool(True).set_context(self.context), None
+
+    def __not__(self, other):
+        return Bool(True).set_context(self.context), None
+
+    def __repr__(self):
+        return "null"
 
 
 class Bool(DataType):
@@ -360,6 +429,12 @@ class String(DataType):
             return String(self.value * other.value).set_context(self.context), None
         else:
             return None, DataType.illegal_operation(other)
+
+    def __eq__(self, other):
+        if isinstance(other, String):
+            return Bool(self.value == other.value).set_context(self.context), None
+        else:
+            return Bool(False).set_context(self.context), None
 
     def copy(self):
         return (

@@ -1,4 +1,4 @@
-statements      : NEWLINE* statement (NEWLINE+ statement)* NEWLINE*
+statements      : NEWLINE* SPACE? statement (NEWLINE+ SPACE? statement)* NEWLINE*
 
 statement       : KEYWORD:return expr?
                 : KEYWORD:continue
@@ -34,24 +34,24 @@ list-expr       : LSQUARE (expr (COMMA expr)*)? RSQUARE
 
 if-expr         : KEYWORD:if expr KEYWORD:then
                   (statement if-expr-b|if-expr-c?)
-                | (NEWLINE statements KEYWORD:end|if-expr-b|if-expr-c) 
+                | (NEWLINE statements |if-expr-b|if-expr-c) 
 
 if-expr-b       : KEYWORD:elif expr KEYWORD:then
                   (statement if-expr-b|if-expr-c?)
-                | (NEWLINE statements KEYWORD:end|if-expr-b|if-expr-c) 
+                | (NEWLINE statements if-expr-b|if-expr-c) 
 
 if-expr-c       : KEYWORD:else
                   statements
-                | (NEWLINE statements KEYWORD:enD)
+                | (NEWLINE statements)
 
 for-expr        : KEYWORD:for INDENTIFIER EQ expr KEYWORD:to expr
                   (KEYWORD:skip expr)? KEYWORD:then 
                   expr
-                | (NEWLINE statements KEYWORD:enD)
+                | (NEWLINE statements)
 
 while-expr      : KEYWORD:while expr KEYWORD:then 
                  expr
-                | (NEWLINE statements KEYWORD:enD)
+                | (NEWLINE statements)
 
 func-def        : KEYWORD:func IDENTIFIER? 
                   LPAR (IDENTIFIER (COMMA IDENTIFIER)*)? RPAR

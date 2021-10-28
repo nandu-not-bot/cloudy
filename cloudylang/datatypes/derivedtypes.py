@@ -21,6 +21,7 @@ class BaseFunction(DataType):
                     self.pos_start,
                     self.pos_end,
                     f"Function {self.name} takes in {len(arg_names)} but {len(args)} passed instead.",
+                    self.context
                 )
             )
 

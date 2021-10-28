@@ -3,12 +3,12 @@
 [M] = modify feature
 
 
+LAST WORKING ON: Error: "AttributeError: 'NoneType' object has no attribute 'advance_count'" 
+
 
 PENDING:
 =======
 
-[-] Remove "end" keyword. 
-    [+] Recognize indents instead.
 [-] Remove "var" keyword.
 [+] Add dictionaries.
 [+] Default arg support for functions.
@@ -17,7 +17,9 @@ PENDING:
 COMPLETED:
 =========
 
-[+] Add Integer and Float types
-    [M] Modify Number class to decide wether a value is int or float
+[-] Remove "end" keyword.
+    [+] Recognize indents instead.
+[+] Add Integer and Float types.
+    [M] Modify Number class to decide wether a value is int or float.
 [M] Replace "then" keyword with ":".
 [M] Replace "->" with ":".

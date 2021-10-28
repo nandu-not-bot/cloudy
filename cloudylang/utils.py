@@ -33,6 +33,7 @@ class TT:
     NEWLINE = "NEWLINE"
     EOF = "EOF"
     COLON = "COLON"
+    SPACE = "SPACE"
 
     SINGLE_CHAR_TOK = {
         "+": PLUS,
@@ -44,10 +45,32 @@ class TT:
         "]": RSQUARE,
         ",": COMMA,
         ":": COLON,
-        "\n": NEWLINE,
-        ";": NEWLINE,
     }
 
+
+NON_VALUE_TOKS = {
+    TT.EQ: "=",
+    TT.PLUS: "+",
+    TT.MINUS: "-",
+    TT.MULT: "*",
+    TT.DIV: "/",
+    TT.FDIV: "//",
+    TT.MODU: "%",
+    TT.POW: "**",
+    TT.LSQUARE: "[",
+    TT.RSQUARE: "]",
+    TT.LPAR: "(",
+    TT.RPAR: ")",
+    TT.EE: "==",
+    TT.NE: "!=",
+    TT.LT: "<",
+    TT.GT: ">",
+    TT.LTE: "<=",
+    TT.GTE: ">=",
+    TT.COMMA: ",",
+    TT.COLON: ":",
+    TT.SPACE: " ",
+}
 
 KEYWORDS = [
     "var",
@@ -62,7 +85,6 @@ KEYWORDS = [
     "step",
     "while",
     "func",
-    "end",
     "break",
     "continue",
     "return",
@@ -199,3 +221,35 @@ class RTResult:
             or self.loop_should_continue
             or self.loop_should_break
         )
+
+
+class ParseResult:
+    def __init__(self):
+        self.error = None
+        self.node = None
+        self.advance_count = 0
+        self.to_reverse_count = 0
+
+    def register_advancement(self):
+        self.advance_count += 1
+
+    def register(self, res):
+        self.advance_count += res.advance_count
+        if res.error:
+            self.error = res.error
+        return res.node
+
+    def try_register(self, res):
+        if res.error:
+            self.to_reverse_count = res.advance_count
+            return None
+        return self.register(res)
+
+    def success(self, node):
+        self.node = node
+        return self
+
+    def faliure(self, error):
+        if not self.error or self.advance_count == 0:
+            self.error = error
+        return self

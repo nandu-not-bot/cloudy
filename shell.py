@@ -11,7 +11,7 @@ while True:
     if error:
         print(error)
     elif result:
-        if len(result.elements) == 1:
-            print(result.elements[0])
-        else:
+        # if len(result.elements) == 1:
+        #     print(result.elements[0])
+        # else:
             print(result)

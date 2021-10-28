@@ -1,10 +1,13 @@
+import json
 import os
 
-from .datatypes.coretypes import NewNum, Null, Number, String, Bool
+from cloudylang.ast_json_generator import Generator
+
+from .datatypes.coretypes import Int, NewNum, Null, Number, String, Bool
 from .datatypes.derivedtypes import BaseFunction, List
 from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
-from .lexer import Lexer
+from .lexer import Lexer, Token
 from .parser import (
     IndexNode,
     Parser,
@@ -25,8 +28,6 @@ from .parser import (
     WhileNode,
 )
 
-
-...
 
 class Function(BaseFunction):
     def __init__(
@@ -307,24 +308,6 @@ class BuiltInFunction(BaseFunction):
 
     execute_run.arg_names = ["fn"]
 
-
-BuiltInFunction.print = BuiltInFunction("print")
-BuiltInFunction.print_ret = BuiltInFunction("print_ret")
-BuiltInFunction.input = BuiltInFunction("input")
-BuiltInFunction.input_int = BuiltInFunction("input_int")
-BuiltInFunction.clear = BuiltInFunction("clear")
-BuiltInFunction.is_number = BuiltInFunction("is_number")
-BuiltInFunction.is_string = BuiltInFunction("is_string")
-BuiltInFunction.is_list = BuiltInFunction("is_list")
-BuiltInFunction.is_bool = BuiltInFunction("is_bool")
-BuiltInFunction.is_function = BuiltInFunction("is_function")
-BuiltInFunction.append = BuiltInFunction("append")
-BuiltInFunction.pop = BuiltInFunction("pop")
-BuiltInFunction.extend = BuiltInFunction("extend")
-BuiltInFunction.run = BuiltInFunction("run")
-BuiltInFunction.len = BuiltInFunction("len")
-BuiltInFunction.type = BuiltInFunction("type")
-
 class Interpreter:
     def visit(self, node, context: Context) -> RTResult:
         method_name = f"visit_{type(node).__name__}"
@@ -373,7 +356,7 @@ class Interpreter:
         if res.should_return():
             return res
 
-        if type(index) is not Number or index.is_float:
+        if not isinstance(index, Int):
             return res.faliure(
                 RTError(node.index_node.pos_start, node.index_node.pos_end, "Index can only be of type 'int'", context)
             )
@@ -439,33 +422,47 @@ class Interpreter:
             return res
 
         if node.op_tok.type == TT.PLUS:
-            result, error = left + right
+            result, error = left.__add__(right)
+
         elif node.op_tok.type == TT.MINUS:
-            result, error = left - right
+            result, error = left.__sub__(right)
+
         elif node.op_tok.type == TT.MULT:
-            result, error = left * right
+            result, error = left.__mul__(right)
+
         elif node.op_tok.type == TT.DIV:
-            result, error = left / right
+            result, error = left.__truediv__(right)
+
         elif node.op_tok.type == TT.FDIV:
-            result, error = left // right
+            result, error = left.__floordiv__(right)
+
         elif node.op_tok.type == TT.MODU:
-            result, error = left % right
+            result, error = left.__mod__(right)
+
         elif node.op_tok.type == TT.POW:
-            result, error = left ** right
+            result, error = left.__pow__(right)
+
         elif node.op_tok.type == TT.EE:
-            result, error = left == right
+            result, error = left.__eq__(right)
+
         elif node.op_tok.type == TT.NE:
-            result, error = left != right
+            result, error = left.__ne__(right)
+
         elif node.op_tok.type == TT.LT:
-            result, error = left < right
+            result, error = left.__lt__(right)
+
         elif node.op_tok.type == TT.GT:
-            result, error = left > right
+            result, error = left.__gt__(right)
+
         elif node.op_tok.type == TT.LTE:
-            result, error = left <= right
+            result, error = left.__lte__(right)
+
         elif node.op_tok.type == TT.GTE:
-            result, error = left >= right
+            result, error = left.__gte__(right)
+
         elif node.op_tok.matches(TT.KEYWORD, "and"):
             result, error = left.__and__(right)
+
         elif node.op_tok.matches(TT.KEYWORD, "or"):
             result, error = left.__or__(right)
 
@@ -666,26 +663,17 @@ class Interpreter:
 
 global_symbol_table = SymbolTable()
 global_symbol_table.set("null", Null())
-global_symbol_table.set("print", BuiltInFunction.print)
-global_symbol_table.set("print_ret", BuiltInFunction.print_ret)
-global_symbol_table.set("input", BuiltInFunction.input)
-global_symbol_table.set("input_int", BuiltInFunction.input_int)
-global_symbol_table.set("clear", BuiltInFunction.clear)
-global_symbol_table.set("is_number", BuiltInFunction.is_number)
-global_symbol_table.set("is_string", BuiltInFunction.is_string)
-global_symbol_table.set("is_bool", BuiltInFunction.is_bool)
-global_symbol_table.set("is_function", BuiltInFunction.is_function)
-global_symbol_table.set("is_list", BuiltInFunction.is_list)
-global_symbol_table.set("append", BuiltInFunction.append)
-global_symbol_table.set("pop", BuiltInFunction.pop)
-global_symbol_table.set("extend", BuiltInFunction.extend)
-global_symbol_table.set("run", BuiltInFunction.run)
-global_symbol_table.set("len", BuiltInFunction.len)
-global_symbol_table.set("type", BuiltInFunction.type)
 
+built_ins = [
+    func[8:] for func in dir(BuiltInFunction) if func.startswith("execute_")
+]
+
+for func_name in built_ins:
+    global_symbol_table.set(func_name, BuiltInFunction(func_name))
 
 def run(fn: str, text: str):
     # Generate Tokens
+    text = text.rstrip()
     lexer = Lexer(text, fn)
     tokens, error = lexer.make_tokens()
     # return tokens, error
@@ -699,10 +687,16 @@ def run(fn: str, text: str):
 
     # Generate AST
     parser = Parser(tokens)
+
     ast = parser.parse()
     # return ast.node, ast.error
     if ast.error:
         return None, ast.error
+
+    # AST json
+    generator = Generator()
+    with open("cloudylang/ast.json", "w") as f:
+        json.dump(generator.gen(ast.node), f)
 
     # Get Interpreter
     interpreter = Interpreter()

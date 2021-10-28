@@ -23,4 +23,4 @@ else:
         _, error = cloudy.run(fn, script)
 
         if error:
-            print("Could not finish running script.\n", error)
+            print(error)
