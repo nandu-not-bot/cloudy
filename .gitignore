@@ -1,5 +1,10 @@
 # Test file
 test.py
+grammar.txt
+.TODO
+ast.json
+.vscode/
+main.cdy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
