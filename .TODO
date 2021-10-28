@@ -17,9 +17,9 @@ PENDING:
 COMPLETED:
 =========
 
-[-] Remove "end" keyword.
-    [+] Recognize indents instead.
 [+] Add Integer and Float types.
     [M] Modify Number class to decide wether a value is int or float.
 [M] Replace "then" keyword with ":".
 [M] Replace "->" with ":".
+[-] Remove "end" keyword.
+    [+] Recognize indents instead.
