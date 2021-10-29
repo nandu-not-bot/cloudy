@@ -46,7 +46,7 @@ class TT:
         "[": LSQUARE,
         "]": RSQUARE,
         "{": LCURLY,
-        "}": RCURLY,        
+        "}": RCURLY,
         ",": COMMA,
         ":": COLON,
     }
@@ -93,6 +93,7 @@ KEYWORDS = [
     "break",
     "continue",
     "return",
+    "del",
 ]
 
 

@@ -252,6 +252,14 @@ class BreakNode:
     def __repr__(self):
         return '(break)'
 
+class DelNode:
+    def __init__(self, atom, pos_start, pos_end):
+        self.value = atom
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+    def __repr__(self):
+        return f"(del {self.value})"
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -440,6 +448,17 @@ class Parser:
 
                 case "func":
                     ret_val = res.register(self.func_def_expr())
+
+                case "del":
+                    pos_start = self.current_tok.pos_start.copy()
+
+                    res.register_advancement()
+                    self.advance()
+
+                    value = res.register(self.index())
+                    if res.error: return res
+
+                    ret_val = DelNode(value, pos_start, value.pos_end)
 
             if ret_val:
                 if res.error: return res
@@ -841,6 +860,10 @@ class Parser:
             if res.error: return res
 
             key_value_pairs.append((key, value))
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
 
         if self.current_tok.type != TT.RCURLY:
             return res.faliure(

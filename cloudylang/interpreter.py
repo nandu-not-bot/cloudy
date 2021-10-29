@@ -1,13 +1,12 @@
 import json
 import os
 
-from cloudylang.ast_json_generator import Generator
-
+from .ast_json_generator import Generator
 from .datatypes.coretypes import Int, NewNum, Null, Number, String, Bool
 from .datatypes.derivedtypes import BaseFunction, Dict, List
 from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
-from .lexer import Lexer, Token
+from .lexer import Lexer
 from .parser import (
     DictNode,
     IndexAssignNode,
@@ -346,7 +345,7 @@ class Interpreter:
         data = res.register(self.visit(node.data_node, context))
         if res.should_return():
             return res
-        if not isinstance(data, (String, List)):
+        if not isinstance(data, (String, List, Dict)):
             return res.faliure(
                 RTError(
                     node.pos_start,
@@ -359,27 +358,53 @@ class Interpreter:
         if res.should_return():
             return res
 
-        if not isinstance(index, Int):
-            return res.faliure(
-                RTError(
-                    node.index_node.pos_start,
-                    node.index_node.pos_end,
-                    "Index can only be of type 'int'",
-                    context,
+        if isinstance(data, (String, List)):
+            if not isinstance(index, Int):
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        "Index can only be of type 'int'",
+                        context,
+                    )
                 )
-            )
 
-        if not data.is_index(index):
-            return res.faliure(
-                OutOfRangeError(
-                    node.index_node.pos_start,
-                    node.index_node.pos_end,
-                    type(data).__name__,
+            if not data.is_index(index):
+                return res.faliure(
+                    OutOfRangeError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        type(data).__name__,
+                    )
                 )
-            )
 
-        return_value = data[index]
-        return res.success(return_value)
+            return_value = data[index]
+            return res.success(return_value)
+
+        elif isinstance(data, Dict):
+            if not isinstance(index, String):
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        f"Key '{index.value}' not found",
+                        context,
+                    )
+                )
+
+            return_value = data.pairs.get(index.value)
+
+            if not return_value:
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        f"Key '{index.value}' not found",
+                        context
+                    )
+                )
+
+            return res.success(return_value)
 
     def visit_IndexAssignNode(self, node: IndexAssignNode, context: Context):
         res = RTResult()
@@ -402,7 +427,7 @@ class Interpreter:
                     node.pos_start,
                     node.pos_end,
                     f"Type '{type(var).__name__}' is immutable.",
-                    context, 
+                    context,
                 )
             )
 
@@ -434,11 +459,12 @@ class Interpreter:
             return res
 
         elements[index.value] = value
-        context.symbol_table.set(var_name, List(elements).set_context(var.context).set_pos(var.pos_start, var.pos_end))
-
-        return res.success(
-            value
+        context.symbol_table.set(
+            var_name,
+            List(elements).set_context(var.context).set_pos(var.pos_start, var.pos_end),
         )
+
+        return res.success(value)
 
     def visit_ListNode(self, node: ListNode, context: Context):
         res = RTResult()
@@ -465,7 +491,9 @@ class Interpreter:
             if not isinstance(key_val, String):
                 return res.faliure(
                     RTError(
-                        key.pos_start, key.pos_end, f"Dictionary keys must be of type 'string' not '{type(key).__name__}'"
+                        key.pos_start,
+                        key.pos_end,
+                        f"Dictionary keys must be of type 'string' not '{type(key).__name__}'",
                     )
                 )
 

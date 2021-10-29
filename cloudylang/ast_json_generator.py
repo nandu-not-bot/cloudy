@@ -1,5 +1,6 @@
 from .utils import Context, Position, SymbolTable
 from .parser import (
+    DelNode,
     DictNode,
     IndexAssignNode,
     NumberNode,
@@ -168,6 +169,12 @@ class Generator:
     def gen_BreakNode(self, node: BreakNode) -> dict:
         return {
             "name": "BreakNode"
+        }
+
+    def gen_DelNode(self, node: DelNode) -> dict:
+        return {
+            "name": "DelNode",
+            "value": self.gen(node.value)
         }
 
     def gen_BinOpNode(self, node: BinOpNode) -> dict:
