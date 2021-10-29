@@ -1,5 +1,6 @@
 from .utils import Context, Position, SymbolTable
 from .parser import (
+    DictNode,
     IndexAssignNode,
     NumberNode,
     BoolNode,
@@ -59,6 +60,17 @@ class Generator:
             "elements": {
                 str(i): self.gen(n) for i, n in enumerate(node.element_nodes)
             }
+        }
+
+    def gen_DictNode(self, node: DictNode):
+        return {
+            "name": "DictNode",
+            "key_value_pairs": [
+                {
+                    "key": self.gen(key),
+                    "value": self.gen(value)
+                } for key, value in node.key_value_nodes
+            ]
         }
 
     def gen_VarAssignNode(self, node: VarAssignNode) -> dict:

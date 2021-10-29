@@ -805,7 +805,7 @@ class Parser:
             )
 
         res.register_advancement()
-        self.register()
+        self.advance()
 
         value = res.register(self.expr())
         if res.error: return res
@@ -817,6 +817,9 @@ class Parser:
             self.advance()
 
         while self.current_tok.type == TT.COMMA:
+            res.register_advancement()
+            self.advance()
+
             while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
                 res.register_advancement()
                 self.advance()
@@ -832,14 +835,14 @@ class Parser:
                 )
 
             res.register_advancement()
-            self.register()
+            self.advance()
 
             value = res.register(self.expr())
             if res.error: return res
 
             key_value_pairs.append((key, value))
 
-        if self.current_tok != TT.RCURLY:
+        if self.current_tok.type != TT.RCURLY:
             return res.faliure(
                 InvalidSyntaxError(
                     self.current_tok.pos_start, self.current_tok.pos_end, "Expected '}'"

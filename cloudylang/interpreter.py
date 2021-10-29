@@ -4,11 +4,12 @@ import os
 from cloudylang.ast_json_generator import Generator
 
 from .datatypes.coretypes import Int, NewNum, Null, Number, String, Bool
-from .datatypes.derivedtypes import BaseFunction, List
+from .datatypes.derivedtypes import BaseFunction, Dict, List
 from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
 from .lexer import Lexer, Token
 from .parser import (
+    DictNode,
     IndexAssignNode,
     IndexNode,
     Parser,
@@ -450,6 +451,32 @@ class Interpreter:
 
         return res.success(
             List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_DictNode(self, node: DictNode, context: Context):
+        res = RTResult()
+        dict_ = {}
+
+        for key, value in node.key_value_nodes:
+            key_val = res.register(self.visit(key, context))
+            if res.should_return():
+                return res
+
+            if not isinstance(key_val, String):
+                return res.faliure(
+                    RTError(
+                        key.pos_start, key.pos_end, f"Dictionary keys must be of type 'string' not '{type(key).__name__}'"
+                    )
+                )
+
+            value_val = res.register(self.visit(value, context))
+            if res.should_return():
+                return res
+
+            dict_[key_val.value] = value_val
+
+        return res.success(
+            Dict(dict_).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_VarAccessNode(self, node: VarAccessNode, context: Context):
