@@ -1,3 +1,4 @@
+from cloudylang.datatypes.coretypes import Number
 from .errors import InvalidSyntaxError
 from .lexer import Token
 from .utils import NON_VALUE_TOKS, TT, ParseResult, Position
@@ -205,6 +206,18 @@ class IndexNode:
         return f"({self.data_node}[{self.index_node}])"
 
 
+class IndexAssignNode:
+    def __init__(self, var_name_tok: Token, index: NumberNode, value_node: NumberNode):
+        self.var_name_tok = var_name_tok
+        self.index = index
+        self.value_node = value_node
+        self.pos_start = index.pos_start
+        self.pos_end = value_node.pos_end
+
+    def __repr__(self):
+        return f"({self.index} = {self.value_node})"
+
+
 class ReturnNode:
     def __init__(
         self, node_to_return: NumberNode, pos_start: Position, pos_end: Position
@@ -256,6 +269,10 @@ class Parser:
     def update_current_tok(self):
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
+
+    @property
+    def peek(self) -> Token:
+        return self.tokens[self.tok_idx + 1] if self.tok_idx+1 < len(self.tokens) else None
 
     # ---------------------------------------------------------------
 
@@ -381,87 +398,112 @@ class Parser:
         res = ParseResult()
         pos_start = self.current_tok.pos_start.copy()
 
-        # Return statement
-        if self.current_tok.matches(TT.KEYWORD, "return"):
-            res.register_advancement()
-            self.advance()
+        if self.current_tok.type == TT.KEYWORD:
+            ret_val = None
 
-            expr = res.try_register(self.expr())
-            if not expr:
-                self.reverse(res.to_reverse_count)
+            match self.current_tok.value:
+                case "return":
+                    res.register_advancement()
+                    self.advance()
 
-            return res.success(
-                ReturnNode(expr, pos_start, self.current_tok.pos_start.copy())
-            )
+                    expr = res.try_register(self.expr())
+                    if not expr:
+                        self.reverse(res.to_reverse_count)
 
-        # Continue statement
-        elif self.current_tok.matches(TT.KEYWORD, "continue"):
-            res.register_advancement()
-            self.advance()
+                    ret_val = ReturnNode(expr, pos_start, self.current_tok.pos_start.copy())
 
-            return res.success(
-                ContinueNode(pos_start, self.current_tok.pos_start.copy())
-            )
+                case "continue":
+                    res.register_advancement()
+                    self.advance()
 
-        # Break statement
-        elif self.current_tok.matches(TT.KEYWORD, "break"):
-            res.register_advancement()
-            self.advance()
+                    ret_val = ContinueNode(pos_start, self.current_tok)
 
-            return res.success(BreakNode(pos_start, self.current_tok.pos_start.copy()))
+                case "break":
+                    res.register_advancement()
+                    self.advance()
 
-        # TODO Variable declaration statement
+                    ret_val = BreakNode(pos_start, self.current_tok)
+
+                case "if":
+                    ret_val = res.register(self.if_expr())
+
+                case "for":
+                    ret_val = res.register(self.for_expr())
+
+                case "while":
+                    ret_val = res.register(self.while_expr())
+
+                case "func":
+                    ret_val = res.register(self.func_def_expr())
+
+            if ret_val:
+                if res.error: return res
+                return res.success(ret_val)
 
         # Default expr check
-        expr = res.register(self.expr())
+        expr = res.register(self.var_assign_statement())
         if res.error:
             return res
 
         return res.success(expr)
 
+    def var_assign_statement(self):
+        res = ParseResult()
+        detected_var = False
+
+        if self.current_tok.type == TT.IDENTIFIER: 
+            var_name_tok = self.current_tok
+            match self.peek.type:
+                case TT.EQ:
+                    res.register_advancement()
+                    self.advance()
+                    res.register_advancement()
+                    self.advance()
+
+                    expr = res.register(self.var_assign_statement())
+                    if res.error: return res
+
+                    return res.success(VarAssignNode(var_name_tok, expr))
+
+                case TT.LSQUARE:
+                    res.register_advancement()
+                    self.advance()
+                    res.register_advancement()
+                    self.advance()
+
+                    index = res.try_register(self.arith_expr())
+                    if res.error: return res
+
+                    if self.current_tok.type != TT.RSQUARE:
+                        return res.faliure(
+                            InvalidSyntaxError(
+                                self.current_tok.pos_start, self.current_tok.pos_end, "Expected ']'"
+                            )
+                        )
+
+                    if self.peek.type != TT.EQ:
+                        self.reverse(res.advance_count)
+                        detected_var = False
+                    
+                    else:
+                        res.register_advancement()
+                        self.advance()
+                        res.register_advancement()
+                        self.advance()
+
+                        expr = res.register(self.var_assign_statement())
+                        if res.error: return res
+
+                        return res.success(IndexAssignNode(var_name_tok, index, expr))
+
+        if not detected_var:
+            expr = res.register(self.expr())
+            if res.error: return res
+            return res.success(expr)
+
     def expr(self):
         res = ParseResult()
 
-        # Check for variable declaration
-        if self.current_tok.matches(TT.KEYWORD, "var"):
-            res.register_advancement()
-            self.advance()
-
-            if self.current_tok.type != TT.IDENTIFIER:
-                return res.faliure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected identifier",
-                    )
-                )
-
-            # Get variable name
-            var_name_tok = self.current_tok
-
-            res.register_advancement()
-            self.advance()
-
-            if self.current_tok.type != TT.EQ:
-                return res.faliure(
-                    InvalidSyntaxError(
-                        self.current_tok.pos_start,
-                        self.current_tok.pos_end,
-                        "Expected '='",
-                    )
-                )
-
-            res.register_advancement()
-            self.advance()
-
-            # Get variable value
-            expr = res.register(self.expr())
-            if res.error:
-                return res
-
-            return res.success(VarAssignNode(var_name_tok, expr))
-
-        # If no variable definition, skip and look for comp_expr with "or" or "and" keywords
         node = res.register(
             self.bin_op(self.comp_expr, ((TT.KEYWORD, "or"), (TT.KEYWORD, "and")))
         )
@@ -650,30 +692,6 @@ class Parser:
                 if res.error: return res
                 return res.success(list_expr)
 
-            # Keyword cases ["if", "for", "while", "func"]
-            case tok if tok.type == TT.KEYWORD:
-                expr = None
-
-                match tok.value:
-                    
-                    case "if":
-                        expr = res.register(self.if_expr())
-                    
-                    case "for":
-                        expr = res.register(self.for_expr())
-
-                    case "while":
-                        expr = res.register(self.while_expr())
-
-                    case "func":
-                        expr = res.register(self.func_def_expr())
-
-                if expr is not None:
-                    if res.error: 
-                        return res
-                    return res.success(expr)
-
-            # Default case - 1 [value doesnt exist (including spaces)]
             case tok if not tok.value or tok.type == TT.SPACE:
                 tok_char = (
                     NON_VALUE_TOKS[tok.type] 

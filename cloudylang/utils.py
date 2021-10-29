@@ -73,7 +73,6 @@ NON_VALUE_TOKS = {
 }
 
 KEYWORDS = [
-    "var",
     "and",
     "or",
     "not",
