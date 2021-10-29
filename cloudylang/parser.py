@@ -643,6 +643,7 @@ class Parser:
         res = ParseResult()
 
         match self.current_tok:
+
             # Number cases
             case tok if tok.type in (TT.INT, TT.FLOAT):
                 res.register_advancement()
@@ -696,6 +697,12 @@ class Parser:
                 list_expr = res.register(self.list_expr())
                 if res.error: return res
                 return res.success(list_expr)
+
+            # Dict case
+            case tok if tok.type == TT.LCURLY:
+                dict_expr = res.register(self.dict_expr())
+                if res.error: return res
+                return res.success(dict_expr)
 
             case tok if not tok.value or tok.type == TT.SPACE:
                 tok_char = (
@@ -756,6 +763,95 @@ class Parser:
         self.advance()
 
         return res.success(ListNode(element_nodes, pos_start, self.current_tok.pos_start))
+
+    def dict_expr(self):
+        res = ParseResult()
+        pos_start = self.current_tok.pos_start.copy()
+
+        if self.current_tok.type != TT.LCURLY:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '{'"
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type == TT.RCURLY:
+            pos_end = self.current_tok.pos_end.copy()
+
+            res.register_advancement()
+            self.advance()
+
+            return res.success(
+                DictNode([], pos_start, pos_end)
+            )
+
+        key_value_pairs = []
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
+
+        key = res.register(self.expr())
+        if res.error: return res
+
+        if self.current_tok.type != TT.COLON:
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                )
+            )
+
+        res.register_advancement()
+        self.register()
+
+        value = res.register(self.expr())
+        if res.error: return res
+
+        key_value_pairs.append((key, value))
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
+
+        while self.current_tok.type == TT.COMMA:
+            while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+                res.register_advancement()
+                self.advance()
+
+            key = res.register(self.expr())
+            if res.error: return res
+
+            if self.current_tok.type != TT.COLON:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                    )
+                )
+
+            res.register_advancement()
+            self.register()
+
+            value = res.register(self.expr())
+            if res.error: return res
+
+            key_value_pairs.append((key, value))
+
+        if self.current_tok != TT.RCURLY:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '}'"
+                )
+            )
+
+        pos_end = self.current_tok.pos_end.copy()
+
+        res.register_advancement()
+        self.advance()
+
+        return res.success(DictNode(key_value_pairs, pos_start, pos_end))
 
     def if_expr(self):
         res = ParseResult()
