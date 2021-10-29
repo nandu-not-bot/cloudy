@@ -91,6 +91,7 @@ class Generator:
     def gen_IndexAssignNode(self, node: IndexAssignNode) -> dict:
         return {
             "name": "IndexAssignNode",
+            "var_name": node.var_name_tok.value,
             "index_node": self.gen(node.index),
             "value_node": self.gen(node.value_node)
         }

@@ -9,6 +9,7 @@ from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
 from .lexer import Lexer, Token
 from .parser import (
+    IndexAssignNode,
     IndexNode,
     Parser,
     BreakNode,
@@ -308,6 +309,7 @@ class BuiltInFunction(BaseFunction):
 
     execute_run.arg_names = ["fn"]
 
+
 class Interpreter:
     def visit(self, node, context: Context) -> RTResult:
         method_name = f"visit_{type(node).__name__}"
@@ -348,7 +350,7 @@ class Interpreter:
                 RTError(
                     node.pos_start,
                     node.pos_end,
-                    f"Type '{data.__name__}' is not subscriptable",
+                    f"Type '{type(data).__name__}' is not subscriptable",
                 )
             )
 
@@ -358,16 +360,84 @@ class Interpreter:
 
         if not isinstance(index, Int):
             return res.faliure(
-                RTError(node.index_node.pos_start, node.index_node.pos_end, "Index can only be of type 'int'", context)
+                RTError(
+                    node.index_node.pos_start,
+                    node.index_node.pos_end,
+                    "Index can only be of type 'int'",
+                    context,
+                )
             )
 
         if not data.is_index(index):
             return res.faliure(
-                OutOfRangeError(node.index_node.pos_start, node.index_node.pos_end, type(data).__name__)
+                OutOfRangeError(
+                    node.index_node.pos_start,
+                    node.index_node.pos_end,
+                    type(data).__name__,
+                )
             )
 
         return_value = data[index]
         return res.success(return_value)
+
+    def visit_IndexAssignNode(self, node: IndexAssignNode, context: Context):
+        res = RTResult()
+        var_name = node.var_name_tok.value
+        var = context.symbol_table.get(var_name)
+
+        if not var:
+            return res.faliure(
+                RTError(
+                    node.var_name_tok.pos_start,
+                    node.var_name_tok.pos_end,
+                    f"Undefined '{var_name}'",
+                    context,
+                )
+            )
+
+        if not isinstance(var, List):
+            return res.faliure(
+                RTError(
+                    node.pos_start,
+                    node.pos_end,
+                    f"Type '{type(var).__name__}' is immutable.",
+                    context, 
+                )
+            )
+
+        index = res.register(self.visit(node.index, context))
+        if res.should_return():
+            return res
+
+        if not isinstance(index, Int):
+            return res.faliure(
+                RTError(
+                    node.index.pos_start,
+                    node.index.pos_end,
+                    "Index can only be of type 'int'",
+                    context,
+                )
+            )
+
+        elements = var.elements
+
+        if index.value >= len(elements):
+            return res.faliure(
+                OutOfRangeError(
+                    node.index.pos_start, node.index.pos_end, type(var).__name__
+                )
+            )
+
+        value = res.register(self.visit(node.value_node, context))
+        if res.should_return():
+            return res
+
+        elements[index.value] = value
+        context.symbol_table.set(var_name, List(elements).set_context(var.context).set_pos(var.pos_start, var.pos_end))
+
+        return res.success(
+            value
+        )
 
     def visit_ListNode(self, node: ListNode, context: Context):
         res = RTResult()
@@ -664,12 +734,11 @@ class Interpreter:
 global_symbol_table = SymbolTable()
 global_symbol_table.set("null", Null())
 
-built_ins = [
-    func[8:] for func in dir(BuiltInFunction) if func.startswith("execute_")
-]
+built_ins = [func[8:] for func in dir(BuiltInFunction) if func.startswith("execute_")]
 
 for func_name in built_ins:
     global_symbol_table.set(func_name, BuiltInFunction(func_name))
+
 
 def run(fn: str, text: str):
     # Generate Tokens

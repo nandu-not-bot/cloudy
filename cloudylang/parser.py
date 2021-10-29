@@ -1,3 +1,4 @@
+from cloudylang.datatypes.coretypes import Number
 from .errors import InvalidSyntaxError
 from .lexer import Token
 from .utils import NON_VALUE_TOKS, TT, ParseResult, Position
@@ -206,9 +207,12 @@ class IndexNode:
 
 
 class IndexAssignNode:
-    def __init__(self, index: IndexNode, value_node: NumberNode):
+    def __init__(self, var_name_tok: Token, index: NumberNode, value_node: NumberNode):
+        self.var_name_tok = var_name_tok
         self.index = index
         self.value_node = value_node
+        self.pos_start = index.pos_start
+        self.pos_end = value_node.pos_end
 
     def __repr__(self):
         return f"({self.index} = {self.value_node})"
@@ -448,9 +452,9 @@ class Parser:
         detected_var = False
 
         if self.current_tok.type == TT.IDENTIFIER: 
+            var_name_tok = self.current_tok
             match self.peek.type:
                 case TT.EQ:
-                    var_name_tok = self.current_tok
                     res.register_advancement()
                     self.advance()
                     res.register_advancement()
@@ -462,10 +466,25 @@ class Parser:
                     return res.success(VarAssignNode(var_name_tok, expr))
 
                 case TT.LSQUARE:
-                    index = res.try_register(self.index())
+                    res.register_advancement()
+                    self.advance()
+                    res.register_advancement()
+                    self.advance()
+
+                    index = res.try_register(self.arith_expr())
+                    if res.error: return res
+
+                    if self.current_tok.type != TT.RSQUARE:
+                        return res.faliure(
+                            InvalidSyntaxError(
+                                self.current_tok.pos_start, self.current_tok.pos_end, "Expected ']'"
+                            )
+                        )
+
                     if self.peek.type != TT.EQ:
-                        self.reverse(res.to_reverse_count)
+                        self.reverse(res.advance_count)
                         detected_var = False
+                    
                     else:
                         res.register_advancement()
                         self.advance()
@@ -475,7 +494,7 @@ class Parser:
                         expr = res.register(self.var_assign_statement())
                         if res.error: return res
 
-                        return res.success(IndexAssignNode(index, expr))
+                        return res.success(IndexAssignNode(var_name_tok, index, expr))
 
         if not detected_var:
             expr = res.register(self.expr())
