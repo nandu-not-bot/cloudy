@@ -1,14 +1,15 @@
 import json
 import os
 
-from cloudylang.ast_json_generator import Generator
-
+from .ast_json_generator import Generator
 from .datatypes.coretypes import Int, NewNum, Null, Number, String, Bool
-from .datatypes.derivedtypes import BaseFunction, List
+from .datatypes.derivedtypes import BaseFunction, Dict, List
 from .utils import TT, Context, RTResult, SymbolTable
 from .errors import RTError, OutOfRangeError
-from .lexer import Lexer, Token
+from .lexer import Lexer
 from .parser import (
+    DelNode,
+    DictNode,
     IndexAssignNode,
     IndexNode,
     Parser,
@@ -345,7 +346,7 @@ class Interpreter:
         data = res.register(self.visit(node.data_node, context))
         if res.should_return():
             return res
-        if not isinstance(data, (String, List)):
+        if not isinstance(data, (String, List, Dict)):
             return res.faliure(
                 RTError(
                     node.pos_start,
@@ -358,27 +359,53 @@ class Interpreter:
         if res.should_return():
             return res
 
-        if not isinstance(index, Int):
-            return res.faliure(
-                RTError(
-                    node.index_node.pos_start,
-                    node.index_node.pos_end,
-                    "Index can only be of type 'int'",
-                    context,
+        if isinstance(data, (String, List)):
+            if not isinstance(index, Int):
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        "Index can only be of type 'int'",
+                        context,
+                    )
                 )
-            )
 
-        if not data.is_index(index):
-            return res.faliure(
-                OutOfRangeError(
-                    node.index_node.pos_start,
-                    node.index_node.pos_end,
-                    type(data).__name__,
+            if not data.is_index(index):
+                return res.faliure(
+                    OutOfRangeError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        type(data).__name__,
+                    )
                 )
-            )
 
-        return_value = data[index]
-        return res.success(return_value)
+            return_value = data[index]
+            return res.success(return_value)
+
+        elif isinstance(data, Dict):
+            if not isinstance(index, String):
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        f"Key '{index.value}' not found",
+                        context,
+                    )
+                )
+
+            return_value = data.pairs.get(index.value)
+
+            if not return_value:
+                return res.faliure(
+                    RTError(
+                        node.index_node.pos_start,
+                        node.index_node.pos_end,
+                        f"Key '{index.value}' not found",
+                        context,
+                    )
+                )
+
+            return res.success(return_value)
 
     def visit_IndexAssignNode(self, node: IndexAssignNode, context: Context):
         res = RTResult()
@@ -395,13 +422,13 @@ class Interpreter:
                 )
             )
 
-        if not isinstance(var, List):
+        if not isinstance(var, (List, Dict)):
             return res.faliure(
                 RTError(
                     node.pos_start,
                     node.pos_end,
                     f"Type '{type(var).__name__}' is immutable.",
-                    context, 
+                    context,
                 )
             )
 
@@ -409,35 +436,204 @@ class Interpreter:
         if res.should_return():
             return res
 
-        if not isinstance(index, Int):
+        if isinstance(var, List):
+            if not isinstance(index, Int):
+                return res.faliure(
+                    RTError(
+                        node.index.pos_start,
+                        node.index.pos_end,
+                        "Index can only be of type 'int'",
+                        context,
+                    )
+                )
+
+            elements = var.elements
+
+            if index.value >= len(elements):
+                return res.faliure(
+                    OutOfRangeError(
+                        node.index.pos_start, node.index.pos_end, type(var).__name__
+                    )
+                )
+
+            value = res.register(self.visit(node.value_node, context))
+            if res.should_return():
+                return res
+
+            elements[index.value] = value
+            context.symbol_table.set(
+                var_name,
+                List(elements)
+                .set_context(var.context)
+                .set_pos(var.pos_start, var.pos_end),
+            )
+
+            return res.success(value)
+
+        elif isinstance(var, Dict):
+            if not isinstance(index, String):
+                return res.faliure(
+                    RTError(
+                        node.index.pos_start,
+                        node.index.pos_end,
+                        "Dict keys can only be of type 'string'",
+                        context,
+                    )
+                )
+
+            pairs = var.pairs
+
+            pairs[index.value] = value = res.register(
+                self.visit(node.value_node, context)
+            )
+            if res.should_return():
+                return res
+
+            context.symbol_table.set(
+                var_name,
+                Dict(pairs).set_context(context).set_pos(var.pos_start, var.pos_end),
+            )
+
+            return res.success(value)
+
+    def visit_DelNode(self, node: DelNode, context: Context):  # sourcery no-metrics
+        res = RTResult()
+        atom = node.atom
+
+        if not isinstance(atom, (VarAccessNode, IndexNode)):
             return res.faliure(
                 RTError(
-                    node.index.pos_start,
-                    node.index.pos_end,
-                    "Index can only be of type 'int'",
+                    node.atom.pos_start,
+                    node.atom.pos_end,
+                    "Value must be a variable",
                     context,
                 )
             )
 
-        elements = var.elements
+        if isinstance(atom, VarAccessNode):
+            var_name = atom.var_name_tok.value
 
-        if index.value >= len(elements):
-            return res.faliure(
-                OutOfRangeError(
-                    node.index.pos_start, node.index.pos_end, type(var).__name__
+            if not context.symbol_table.get(var_name):
+                return res.faliure(
+                    RTError(
+                        atom.var_name_tok.pos_start,
+                        atom.var_name_tok.pos_end,
+                        f"Undefined variable '{var_name}'",
+                        context,
+                    )
                 )
-            )
 
-        value = res.register(self.visit(node.value_node, context))
-        if res.should_return():
-            return res
+            del context.symbol_table.symbols[var_name]
 
-        elements[index.value] = value
-        context.symbol_table.set(var_name, List(elements).set_context(var.context).set_pos(var.pos_start, var.pos_end))
+            return res.success(Null())
 
-        return res.success(
-            value
-        )
+        elif isinstance(atom, IndexNode):
+            if not isinstance(atom.data_node, VarAccessNode):
+                return res.faliure(
+                    RTError(
+                        node.atom.pos_start,
+                        node.atom.pos_end,
+                        "Value must be a variable",
+                        context,
+                    )
+                )
+
+            var_name = atom.data_node.var_name_tok.value
+
+            if not context.symbol_table.get(var_name):
+                return res.faliure(
+                    RTError(
+                        atom.data_node.var_name_tok.pos_start,
+                        atom.data_node.var_name_tok.pos_end,
+                        f"Undefined variable '{var_name}'",
+                        context,
+                    )
+                )
+
+            data_node_val = res.register(self.visit(atom.data_node, context))
+            if res.should_return():
+                return res
+
+            index = res.register(self.visit(atom.index_node, context))
+
+            if isinstance(data_node_val, List):
+                if res.should_return():
+                    return res
+
+                if not isinstance(index, Int):
+                    return res.faliure(
+                        RTError(
+                            atom.index_node.pos_start,
+                            atom.index_node.pos_end,
+                            "Index can only be of type 'int'",
+                            context,
+                        )
+                    )
+
+                elements = data_node_val.elements
+
+                if index.value >= len(elements):
+                    return res.faliure(
+                        OutOfRangeError(
+                            atom.index_node.pos_start,
+                            atom.index_node.pos_end,
+                            type(data_node_val).__name__,
+                        )
+                    )
+
+                del elements[index.value]
+
+                context.symbol_table.set(
+                    var_name,
+                    List(elements)
+                    .set_context(context)
+                    .set_pos(data_node_val.pos_start, data_node_val.pos_end),
+                )
+
+                return res.success(Null())
+
+            elif isinstance(data_node_val, Dict):
+                if not isinstance(index, String):
+                    return res.faliure(
+                        RTError(
+                            atom.index_node.pos_start,
+                            atom.index_node.pos_end,
+                            "Dict keys can only be of type 'string'",
+                            context,
+                        )
+                    )
+
+                pairs = data_node_val.pairs
+
+                if not pairs.get(index.value):
+                    return res.faliure(
+                        RTError(
+                            atom.index_node.pos_start,
+                            atom.index_node.pos_end,
+                            f"Key '{index.value}' not found",
+                            context,
+                        )
+                    )
+
+                del pairs[index.value]
+
+                context.symbol_table.set(
+                    var_name,
+                    Dict(pairs)
+                    .set_context(context)
+                    .set_pos(data_node_val.pos_start, data_node_val.pos_end),
+                )
+
+                return res.success(Null())
+
+            else:
+                return res.faliure(
+                    RTError(
+                        atom.data_node.pos_start,
+                        atom.data_node.pos_end,
+                        f"Value of type '{type(data_node_val).__name__}' cannot be deleted",
+                    )
+                )
 
     def visit_ListNode(self, node: ListNode, context: Context):
         res = RTResult()
@@ -450,6 +646,34 @@ class Interpreter:
 
         return res.success(
             List(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_DictNode(self, node: DictNode, context: Context):
+        res = RTResult()
+        dict_ = {}
+
+        for key, value in node.key_value_nodes:
+            key_val = res.register(self.visit(key, context))
+            if res.should_return():
+                return res
+
+            if not isinstance(key_val, String):
+                return res.faliure(
+                    RTError(
+                        key.pos_start,
+                        key.pos_end,
+                        f"Dictionary keys must be of type 'string' not '{type(key).__name__}'",
+                    )
+                )
+
+            value_val = res.register(self.visit(value, context))
+            if res.should_return():
+                return res
+
+            dict_[key_val.value] = value_val
+
+        return res.success(
+            Dict(dict_).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_VarAccessNode(self, node: VarAccessNode, context: Context):

@@ -2,6 +2,7 @@ from .coretypes import DataType, Int, Number
 from ..errors import RTError
 from ..utils import Context, RTResult, SymbolTable
 
+
 class BaseFunction(DataType):
     def __init__(self, name):
         super().__init__()
@@ -21,7 +22,7 @@ class BaseFunction(DataType):
                     self.pos_start,
                     self.pos_end,
                     f"Function {self.name} takes in {len(arg_names)} but {len(args)} passed instead.",
-                    self.context
+                    self.context,
                 )
             )
 
@@ -42,6 +43,7 @@ class BaseFunction(DataType):
         self.populate_args(arg_names, args, exec_context)
         return res.success(None)
 
+
 class List(DataType):
     def __init__(self, elements: list):
         super().__init__()
@@ -50,7 +52,7 @@ class List(DataType):
     def __add__(self, other):
         if not isinstance(other, List):
             return None, DataType.illegal_operation(other)
-        
+
         new_list = self.copy()
         return List(new_list.elements + other.elements), None
 
@@ -77,3 +79,19 @@ class List(DataType):
 
     def __repr__(self):
         return f"{self.elements!r}"
+
+
+class Dict(DataType):
+    def __init__(self, pairs: dict):
+        super().__init__()
+        self.pairs = pairs
+
+    def copy(self):
+        return (
+            Dict(self.pairs)
+            .set_context(self.context)
+            .set_pos(self.pos_start, self.pos_end)
+        )
+
+    def __repr__(self):
+        return f"{self.pairs!r}"

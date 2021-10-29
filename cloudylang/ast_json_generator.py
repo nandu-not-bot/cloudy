@@ -1,5 +1,7 @@
 from .utils import Context, Position, SymbolTable
 from .parser import (
+    DelNode,
+    DictNode,
     IndexAssignNode,
     NumberNode,
     BoolNode,
@@ -59,6 +61,17 @@ class Generator:
             "elements": {
                 str(i): self.gen(n) for i, n in enumerate(node.element_nodes)
             }
+        }
+
+    def gen_DictNode(self, node: DictNode):
+        return {
+            "name": "DictNode",
+            "key_value_pairs": [
+                {
+                    "key": self.gen(key),
+                    "value": self.gen(value)
+                } for key, value in node.key_value_nodes
+            ]
         }
 
     def gen_VarAssignNode(self, node: VarAssignNode) -> dict:
@@ -156,6 +169,12 @@ class Generator:
     def gen_BreakNode(self, node: BreakNode) -> dict:
         return {
             "name": "BreakNode"
+        }
+
+    def gen_DelNode(self, node: DelNode) -> dict:
+        return {
+            "name": "DelNode",
+            "value": self.gen(node.atom)
         }
 
     def gen_BinOpNode(self, node: BinOpNode) -> dict:

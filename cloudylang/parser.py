@@ -1,4 +1,3 @@
-from cloudylang.datatypes.coretypes import Number
 from .errors import InvalidSyntaxError
 from .lexer import Token
 from .utils import NON_VALUE_TOKS, TT, ParseResult, Position
@@ -48,6 +47,12 @@ class ListNode:
     def __repr__(self):
         return str(self.element_nodes)
 
+
+class DictNode:
+    def __init__(self, key_value_nodes: list[tuple[StringNode]], pos_start: Position, pos_end: Position):
+        self.key_value_nodes = key_value_nodes
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 class VarAccessNode:
     def __init__(self, var_name_tok: Token):
@@ -195,7 +200,7 @@ class CallNode:
 
 
 class IndexNode:
-    def __init__(self, data_node: ListNode, index_node: NumberNode):
+    def __init__(self, data_node: VarAccessNode, index_node: NumberNode):
         self.data_node = data_node
         self.index_node = index_node
 
@@ -247,6 +252,14 @@ class BreakNode:
     def __repr__(self):
         return '(break)'
 
+class DelNode:
+    def __init__(self, atom: IndexNode, pos_start, pos_end):
+        self.atom = atom
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
+    def __repr__(self):
+        return f"(del {self.atom})"
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -435,6 +448,17 @@ class Parser:
 
                 case "func":
                     ret_val = res.register(self.func_def_expr())
+
+                case "del":
+                    pos_start = self.current_tok.pos_start.copy()
+
+                    res.register_advancement()
+                    self.advance()
+
+                    value = res.register(self.index())
+                    if res.error: return res
+
+                    ret_val = DelNode(value, pos_start, value.pos_end)
 
             if ret_val:
                 if res.error: return res
@@ -638,6 +662,7 @@ class Parser:
         res = ParseResult()
 
         match self.current_tok:
+
             # Number cases
             case tok if tok.type in (TT.INT, TT.FLOAT):
                 res.register_advancement()
@@ -691,6 +716,12 @@ class Parser:
                 list_expr = res.register(self.list_expr())
                 if res.error: return res
                 return res.success(list_expr)
+
+            # Dict case
+            case tok if tok.type == TT.LCURLY:
+                dict_expr = res.register(self.dict_expr())
+                if res.error: return res
+                return res.success(dict_expr)
 
             case tok if not tok.value or tok.type == TT.SPACE:
                 tok_char = (
@@ -751,6 +782,102 @@ class Parser:
         self.advance()
 
         return res.success(ListNode(element_nodes, pos_start, self.current_tok.pos_start))
+
+    def dict_expr(self):
+        res = ParseResult()
+        pos_start = self.current_tok.pos_start.copy()
+
+        if self.current_tok.type != TT.LCURLY:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '{'"
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type == TT.RCURLY:
+            pos_end = self.current_tok.pos_end.copy()
+
+            res.register_advancement()
+            self.advance()
+
+            return res.success(
+                DictNode([], pos_start, pos_end)
+            )
+
+        key_value_pairs = []
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
+
+        key = res.register(self.expr())
+        if res.error: return res
+
+        if self.current_tok.type != TT.COLON:
+            return res.failure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                )
+            )
+
+        res.register_advancement()
+        self.advance()
+
+        value = res.register(self.expr())
+        if res.error: return res
+
+        key_value_pairs.append((key, value))
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
+
+        while self.current_tok.type == TT.COMMA:
+            res.register_advancement()
+            self.advance()
+
+            while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+                res.register_advancement()
+                self.advance()
+
+            key = res.register(self.expr())
+            if res.error: return res
+
+            if self.current_tok.type != TT.COLON:
+                return res.failure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                    )
+                )
+
+            res.register_advancement()
+            self.advance()
+
+            value = res.register(self.expr())
+            if res.error: return res
+
+            key_value_pairs.append((key, value))
+
+        while self.current_tok.type in (TT.NEWLINE, TT.SPACE):
+            res.register_advancement()
+            self.advance()
+
+        if self.current_tok.type != TT.RCURLY:
+            return res.faliure(
+                InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '}'"
+                )
+            )
+
+        pos_end = self.current_tok.pos_end.copy()
+
+        res.register_advancement()
+        self.advance()
+
+        return res.success(DictNode(key_value_pairs, pos_start, pos_end))
 
     def if_expr(self):
         res = ParseResult()
