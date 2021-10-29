@@ -8,8 +8,8 @@ if len(argv) <= 1:
 
 fn = argv[1]
 
-if (t := fn.split(".")[-1]) != "cdy":
-    print(f"Unsupported file type '.{t}'")
+if (file_ext := fn.split(".")[-1]) != "cdy":
+    print(f"Unsupported file type '.{file_ext}'")
 
 else:
     try:
