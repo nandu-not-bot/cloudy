@@ -1,5 +1,6 @@
 from .utils import Context, Position, SymbolTable
 from .parser import (
+    IndexAssignNode,
     NumberNode,
     BoolNode,
     StringNode,
@@ -85,6 +86,13 @@ class Generator:
             "name": "IndexNode",
             "data_node": self.gen(node.data_node),
             "index_node": self.gen(node.index_node)
+        }
+
+    def gen_IndexAssignNode(self, node: IndexAssignNode) -> dict:
+        return {
+            "name": "IndexAssignNode",
+            "index_node": self.gen(node.index),
+            "value_node": self.gen(node.value_node)
         }
     
     def gen_FuncDefNode(self, node: FuncDefNode) -> dict:
