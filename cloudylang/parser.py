@@ -48,6 +48,12 @@ class ListNode:
         return str(self.element_nodes)
 
 
+class DictNode:
+    def __init__(self, key_value_nodes: list[tuple[StringNode]], pos_start: Position, pos_end: Position):
+        self.key_value_nodes = key_value_nodes
+        self.pos_start = pos_start
+        self.pos_end = pos_end
+
 class VarAccessNode:
     def __init__(self, var_name_tok: Token):
         self.var_name_tok = var_name_tok

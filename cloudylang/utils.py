@@ -23,6 +23,8 @@ class TT:
     RSQUARE = "RSQUARE"
     LPAR = "LPAR"
     RPAR = "RPAR"
+    LCURLY = "LCURLY"
+    RCURLY = "RCURLY"
     EE = "EE"
     NE = "NE"
     LT = "LT"
@@ -43,6 +45,8 @@ class TT:
         ")": RPAR,
         "[": LSQUARE,
         "]": RSQUARE,
+        "{": LCURLY,
+        "}": RCURLY,        
         ",": COMMA,
         ":": COLON,
     }
@@ -60,6 +64,8 @@ NON_VALUE_TOKS = {
     TT.LSQUARE: "[",
     TT.RSQUARE: "]",
     TT.LPAR: "(",
+    TT.LCURLY: "{",
+    TT.RCURLY: "}",
     TT.RPAR: ")",
     TT.EE: "==",
     TT.NE: "!=",
