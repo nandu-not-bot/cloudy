@@ -200,7 +200,7 @@ class CallNode:
 
 
 class IndexNode:
-    def __init__(self, data_node: ListNode, index_node: NumberNode):
+    def __init__(self, data_node: VarAccessNode, index_node: NumberNode):
         self.data_node = data_node
         self.index_node = index_node
 
@@ -253,13 +253,13 @@ class BreakNode:
         return '(break)'
 
 class DelNode:
-    def __init__(self, atom, pos_start, pos_end):
-        self.value = atom
+    def __init__(self, atom: IndexNode, pos_start, pos_end):
+        self.atom = atom
         self.pos_start = pos_start
         self.pos_end = pos_end
 
     def __repr__(self):
-        return f"(del {self.value})"
+        return f"(del {self.atom})"
 
 class Parser:
     def __init__(self, tokens: list[Token]):

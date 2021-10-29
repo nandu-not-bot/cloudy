@@ -174,7 +174,7 @@ class Generator:
     def gen_DelNode(self, node: DelNode) -> dict:
         return {
             "name": "DelNode",
-            "value": self.gen(node.value)
+            "value": self.gen(node.atom)
         }
 
     def gen_BinOpNode(self, node: BinOpNode) -> dict:
