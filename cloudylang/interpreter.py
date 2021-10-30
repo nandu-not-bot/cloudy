@@ -1,35 +1,15 @@
 import json
 import os
 
-from .ast_json_generator import Generator
-from .datatypes.coretypes import Int, NewNum, Null, Number, String, Bool
-from .datatypes.derivedtypes import BaseFunction, Dict, List
-from .utils import TT, Context, RTResult, SymbolTable
-from .errors import RTError, OutOfRangeError
-from .lexer import Lexer
-from .parser import (
-    DelNode,
-    DictNode,
-    IndexAssignNode,
-    IndexNode,
-    Parser,
-    BreakNode,
-    CallNode,
-    ContinueNode,
-    FuncDefNode,
-    ListNode,
-    NumberNode,
-    BinOpNode,
-    ReturnNode,
-    StringNode,
-    UnaryOpNode,
-    VarAccessNode,
-    VarAssignNode,
-    IfNode,
-    ForNode,
-    WhileNode,
-)
+from .utils.utils import TT, Context, RTResult, SymbolTable
+from .utils.ast_json_generator import Generator
+from .utils.errors import RTError, OutOfRangeError
 
+from .datatypes.coretypes import *
+from .datatypes.derivedtypes import *
+
+from .parser import *
+from .lexer import Lexer
 
 class Function(BaseFunction):
     def __init__(
@@ -988,7 +968,7 @@ def run(fn: str, text: str):
 
     # AST json
     generator = Generator()
-    with open("cloudylang/ast.json", "w") as f:
+    with open("cloudylang/utils/ast.json", "w") as f:
         json.dump(generator.gen(ast.node), f)
 
     # Get Interpreter

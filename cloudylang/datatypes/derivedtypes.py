@@ -1,6 +1,6 @@
 from .coretypes import DataType, Int, Number
-from ..errors import RTError
-from ..utils import Context, RTResult, SymbolTable
+from ..utils.errors import RTError
+from ..utils.utils import Context, RTResult, SymbolTable
 
 
 class BaseFunction(DataType):

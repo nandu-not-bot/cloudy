@@ -1,34 +1,7 @@
-from .utils import Position, TT, DIGITS, LETTERS, KEYWORDS
-from .errors import Error, IllegalCharError, ExpectedCharError
+from .utils.utils import Position, TT, DIGITS, LETTERS, KEYWORDS, Token
+from .utils.errors import Error, IllegalCharError, ExpectedCharError
 
 LETTERS_DIGITS = LETTERS + DIGITS
-
-class Token:
-    def __init__(
-        self,
-        type: str,
-        value=None,
-        pos_start: Position = None,
-        pos_end: Position = None,
-    ):
-        self.type = type
-        self.value = value
-        if pos_start:
-            self.pos_start = pos_start.copy()
-            self.pos_end = pos_start.copy()
-            self.pos_end.advance()
-
-        if pos_end:
-            self.pos_end = pos_end
-
-    def matches(self, type, value):
-        return self.type == type and self.value == value
-
-    def __repr__(self):
-        if self.value is not None:
-            return f"{self.type}:{self.value}"
-        return f"{self.type}"
-
 
 class Lexer:
     def __init__(self, text: str, fn: str):

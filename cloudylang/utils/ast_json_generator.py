@@ -1,26 +1,5 @@
 from .utils import Context, Position, SymbolTable
-from .parser import (
-    DelNode,
-    DictNode,
-    IndexAssignNode,
-    NumberNode,
-    BoolNode,
-    StringNode,
-    ListNode,
-    VarAccessNode,
-    VarAssignNode,
-    CallNode,
-    IndexNode,
-    FuncDefNode,
-    IfNode,
-    WhileNode,
-    ForNode,
-    ReturnNode,
-    ContinueNode,
-    BreakNode,
-    BinOpNode,
-    UnaryOpNode,
-)
+from .nodes import *
 
 class Generator:
 

@@ -1,5 +1,5 @@
-from ..utils import Position
-from ..errors import RTError
+from ..utils.utils import Position
+from ..utils.errors import RTError
 
 
 class DataType:
@@ -72,10 +72,10 @@ class DataType:
 
     def __gte__(self, other):
         return None, self.illegal_operation(other)
-    
+
     def __and__(self, other):
         return None, self.illegal_operation(other)
-    
+
     def __or__(self, other):
         return None, self.illegal_operation(other)
 
@@ -85,12 +85,14 @@ class DataType:
     def __neg__(self):
         return None, self.illegal_operation()
 
+
 class NewNum:
     def __new__(cls, value):
         if "." in str(value):
             return Float(value)
         else:
             return Int(value)
+
 
 class Number(DataType):
     def __init__(self, value: int):
@@ -237,13 +239,16 @@ class Number(DataType):
     def __repr__(self):
         return str(self.value)
 
+
 class Float(Number):
     def __init__(self, value):
         super().__init__(value)
 
+
 class Int(Number):
     def __init__(self, value):
         super().__init__(value)
+
 
 class Null(DataType):
     def __init__(self):
