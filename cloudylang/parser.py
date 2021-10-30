@@ -983,11 +983,15 @@ class Parser:
             
             cases.append((condition, statements, True))
 
+            while self.current_tok .type == TT. NEWLINE:
+                res.register_advancement()
+                self.advance()
+
             if (
                 self.indent_level 
                 and self.tok_idx + 1 < len(self.tokens) 
-                and self.tokens[self.tok_idx + 1].type == TT.KEYWORD 
-                and self.tokens[self.tok_idx + 1].value in {"else", "elif"}
+                and self.peek.type == TT.KEYWORD 
+                and self.peek.value in {"else", "elif"}
             ):
                 if self.current_tok.type != TT.SPACE:
                     return res.faliure(
@@ -1006,10 +1010,6 @@ class Parser:
                 else:
                     res.register_advancement()
                     self.advance()
-
-            while self.current_tok .type == TT. NEWLINE:
-                res.register_advancement()
-                self.advance()
 
             if self.current_tok.matches(TT.KEYWORD, "else") or self.current_tok.matches(TT.KEYWORD, "elif"):
                 all_cases = res.register(self.if_expr_b_or_c())
