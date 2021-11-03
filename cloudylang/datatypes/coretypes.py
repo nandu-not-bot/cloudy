@@ -453,14 +453,14 @@ class String(DataType):
     def in_(self, other):
         if isinstance(other, String):
             return Bool(other.value in self.value).set_context(self.context), None
-        else:
-            None, DataType.illegal_operation(other)
+
+        return None, DataType.illegal_operation(other)
 
     def not_in(self, other):
         if isinstance(other, String):
             return Bool(other.value not in self.value).set_context(self.context), None
-        else:
-            None, DataType.illegal_operation(other)
+
+        return None, DataType.illegal_operation(other)
 
     def copy(self):
         return (
