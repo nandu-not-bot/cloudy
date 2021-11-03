@@ -1,55 +1,58 @@
 import string
+from enum import Enum, auto
 
 DIGITS = "01234567890"
 LETTERS = string.ascii_letters + "_"
 
 
-class TT:
-    INT = "INT"
-    FLOAT = "FLOAT"
-    BOOL = "BOOL"
-    STRING = "STRING"
-    IDENTIFIER = "IDENTIFIER"
-    KEYWORD = "KEYWORD"
-    EQ = "EQ"
-    PLUS = "PLUS"
-    MINUS = "MINUS"
-    MULT = "MULT"
-    DIV = "DIV"
-    FDIV = "FDIV"
-    MODU = "MODU"
-    POW = "POW"
-    LSQUARE = "LSQUARE"
-    RSQUARE = "RSQUARE"
-    LPAR = "LPAR"
-    RPAR = "RPAR"
-    LCURLY = "LCURLY"
-    RCURLY = "RCURLY"
-    EE = "EE"
-    NE = "NE"
-    LT = "LT"
-    GT = "GT"
-    LTE = "LTE"
-    GTE = "GTE"
-    COMMA = "COMMA"
-    NEWLINE = "NEWLINE"
-    EOF = "EOF"
-    COLON = "COLON"
-    SPACE = "SPACE"
+class TT(Enum):
+    INT = auto()
+    FLOAT = auto()
+    BOOL = auto()
+    STRING = auto()
+    IDENTIFIER = auto()
+    KEYWORD = auto()
+    EQ = auto()
+    PLUS = auto()
+    MINUS = auto()
+    MULT = auto()
+    DIV = auto()
+    FDIV = auto()
+    MODU = auto()
+    POW = auto()
+    LSQUARE = auto()
+    RSQUARE = auto()
+    LPAR = auto()
+    RPAR = auto()
+    LCURLY = auto()
+    RCURLY = auto()
+    EE = auto()
+    NE = auto()
+    LT = auto()
+    GT = auto()
+    LTE = auto()
+    GTE = auto()
+    COMMA = auto()
+    NEWLINE = auto()
+    EOF = auto()
+    COLON = auto()
+    SPACE = auto()
+    IN = auto()
+    NIN = auto()
 
-    SINGLE_CHAR_TOK = {
-        "+": PLUS,
-        "-": MINUS,
-        "%": MODU,
-        "(": LPAR,
-        ")": RPAR,
-        "[": LSQUARE,
-        "]": RSQUARE,
-        "{": LCURLY,
-        "}": RCURLY,
-        ",": COMMA,
-        ":": COLON,
-    }
+SINGLE_CHAR_TOK = {
+    "+": TT.PLUS,
+    "-": TT.MINUS,
+    "%": TT.MODU,
+    "(": TT.LPAR,
+    ")": TT.RPAR,
+    "[": TT.LSQUARE,
+    "]": TT.RSQUARE,
+    "{": TT.LCURLY,
+    "}": TT.RCURLY,
+    ",": TT.COMMA,
+    ":": TT.COLON,
+}
 
 
 NON_VALUE_TOKS = {
@@ -76,6 +79,8 @@ NON_VALUE_TOKS = {
     TT.COMMA: ",",
     TT.COLON: ":",
     TT.SPACE: " ",
+    TT.IN: "->",
+    TT.NIN: "!->",
 }
 
 KEYWORDS = [
@@ -286,3 +291,6 @@ class Token:
         if self.value is not None:
             return f"{self.type}:{self.value}"
         return f"{self.type}"
+
+if __name__ == "__main__":
+    print(SINGLE_CHAR_TOK)
