@@ -1,4 +1,4 @@
-from .utils.utils import Position, TT, DIGITS, LETTERS, KEYWORDS, Token
+from .utils.utils import SINGLE_CHAR_TOK, Position, TT, DIGITS, LETTERS, KEYWORDS, Token
 from .utils.errors import Error, IllegalCharError, ExpectedCharError
 
 LETTERS_DIGITS = LETTERS + DIGITS
@@ -52,9 +52,9 @@ class Lexer:
                     if error:
                         return [], error
                     tokens.append(token)
-                case char if char in TT.SINGLE_CHAR_TOK:
+                case char if char in SINGLE_CHAR_TOK:
                     self.found_indent = False
-                    tokens.append(Token(TT.SINGLE_CHAR_TOK[char], char, pos_start=self.pos.copy()))
+                    tokens.append(Token(SINGLE_CHAR_TOK[char], char, pos_start=self.pos.copy()))
                     self.advance()
                 case "*":
                     self.found_indent = False

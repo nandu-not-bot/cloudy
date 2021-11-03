@@ -1,4 +1,4 @@
-from .coretypes import DataType, Int, Number
+from .coretypes import Bool, DataType, Int, Number, String
 from ..utils.errors import RTError
 from ..utils.utils import Context, RTResult, SymbolTable
 
@@ -49,20 +49,74 @@ class List(DataType):
         super().__init__()
         self.elements = elements
 
-    def __add__(self, other):
+    def add(self, other):
         if not isinstance(other, List):
             return None, DataType.illegal_operation(other)
 
         new_list = self.copy()
         return List(new_list.elements + other.elements), None
 
-    def __mul__(self, other):
+    def mul(self, other):
         if not isinstance(other, Int):
             return None, DataType.illegal_operation(other)
 
         new_list = self.copy()
         new_list *= other
         return new_list, None
+
+    def in_(self, other):
+        if isinstance(other, List):
+            return Bool(other.elements in self.elements), None
+
+        elif isinstance(other, String):
+            for element in self.elements:
+                if isinstance(element, String) and other.value == element.value:
+                    return Bool(True).set_context(self.set_context), None
+                
+        elif isinstance(other, Number):
+            for element in self.elements:
+                if isinstance(element, Number) and other.value == element.value:
+                    return Bool(True).set_context(self.set_context), None
+
+        elif isinstance(other, Bool):
+            for element in self.elements:
+                if isinstance(element, Bool) and other.value == element.value:
+                    return Bool(True).set_context(self.set_context), None
+        
+        elif isinstance(other, Dict):
+            for element in self.elements:
+                if isinstance(element, Dict) and other.pairs == element.pairs:
+                    return Bool(True).set_context(self.set_context), None
+
+        
+        return Bool(False).set_context(self.set_context), None
+
+    def not_in(self, other):
+        if isinstance(other, List):
+            return Bool(other.elements not in self.elements), None
+
+        elif isinstance(other, String):
+            for element in self.elements:
+                if isinstance(element, String) and other.value == element.value:
+                    return Bool(False).set_context(self.set_context), None
+
+        elif isinstance(other, Number):
+            for element in self.elements:
+                if isinstance(element, Number) and other.value == element.value:
+                    return Bool(False).set_context(self.set_context), None
+
+        elif isinstance(other, Bool):
+            for element in self.elements:
+                if isinstance(element, Bool) and other.value == element.value:
+                    return Bool(False).set_context(self.set_context), None
+
+        elif isinstance(other, Dict):
+            for element in self.elements:
+                if isinstance(element, Dict) and other.pairs == element.pairs:
+                    return Bool(False).set_context(self.set_context), None
+
+
+        return Bool(True).set_context(self.set_context), None
 
     def copy(self):
         return (
@@ -85,6 +139,16 @@ class Dict(DataType):
     def __init__(self, pairs: dict):
         super().__init__()
         self.pairs = pairs
+
+    def in_(self, other):
+        if isinstance(other, String):
+            return Bool(other.value in self.pairs), None
+        return Bool(False).set_context(self.context), None
+
+    def not_in(self, other):
+        if isinstance(other, String):
+            return Bool(other.value not in self.pairs), None
+        return Bool(True).set_context(self.context), None
 
     def copy(self):
         return (

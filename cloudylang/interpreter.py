@@ -696,49 +696,55 @@ class Interpreter:
             return res
 
         if node.op_tok.type == TT.PLUS:
-            result, error = left.__add__(right)
+            result, error = left.add(right)
 
         elif node.op_tok.type == TT.MINUS:
-            result, error = left.__sub__(right)
+            result, error = left.sub(right)
 
         elif node.op_tok.type == TT.MULT:
-            result, error = left.__mul__(right)
+            result, error = left.mul(right)
 
         elif node.op_tok.type == TT.DIV:
-            result, error = left.__truediv__(right)
+            result, error = left.truedive(right)
 
         elif node.op_tok.type == TT.FDIV:
-            result, error = left.__floordiv__(right)
+            result, error = left.floordiv(right)
 
         elif node.op_tok.type == TT.MODU:
-            result, error = left.__mod__(right)
+            result, error = left.mod(right)
 
         elif node.op_tok.type == TT.POW:
-            result, error = left.__pow__(right)
+            result, error = left.pow(right)
 
         elif node.op_tok.type == TT.EE:
-            result, error = left.__eq__(right)
+            result, error = left.eq(right)
 
         elif node.op_tok.type == TT.NE:
-            result, error = left.__ne__(right)
+            result, error = left.ne(right)
 
         elif node.op_tok.type == TT.LT:
-            result, error = left.__lt__(right)
+            result, error = left.lt(right)
 
         elif node.op_tok.type == TT.GT:
-            result, error = left.__gt__(right)
+            result, error = left.gt(right)
 
         elif node.op_tok.type == TT.LTE:
-            result, error = left.__lte__(right)
+            result, error = left.lte(right)
 
         elif node.op_tok.type == TT.GTE:
-            result, error = left.__gte__(right)
+            result, error = left.gte(right)
+
+        elif node.op_tok.type == TT.IN:
+            result, error = right.in_(left)
+
+        elif node.op_tok.type == TT.NOT_IN:
+            result, error = right.not_in(left)
 
         elif node.op_tok.matches(TT.KEYWORD, "and"):
-            result, error = left.__and__(right)
+            result, error = left.and_(right)
 
         elif node.op_tok.matches(TT.KEYWORD, "or"):
-            result, error = left.__or__(right)
+            result, error = left.or_(right)
 
         if error:
             return res.faliure(error)
@@ -756,7 +762,7 @@ class Interpreter:
         if node.op_tok.type == TT.MINUS:
             number = -number
         elif node.op_tok.matches(TT.KEYWORD, "not"):
-            number, error = number.__not__()
+            number, error = number.not_()
 
         if error:
             return res
