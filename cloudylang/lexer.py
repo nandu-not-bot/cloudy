@@ -59,6 +59,9 @@ class Lexer:
                 case "*":
                     self.found_indent = False
                     tokens.append(self.make_double_char_token(TT.MULT, TT.POW, "*"))
+                case "-":
+                    self.found_indent = False
+                    tokens.append(self.make_double_char_token(TT.MINUS, TT.IN, ">"))
                 case "/":
                     self.found_indent = False
                     tokens.append(self.make_double_char_token(TT.DIV, TT.FDIV, "/"))
@@ -127,9 +130,16 @@ class Lexer:
         if self.current_char == "=":
             self.advance()
             return Token(TT.NE, pos_start=pos_start, pos_end=self.pos), None
+        elif self.current_char == "-":
+            self.advance()
+            if self.current_char != ">":
+                return None, ExpectedCharError(pos_start, self.pos, "'>' (after '!-')")
+            self.advance()
+            return Token(TT.NIN, pos_start=pos_start, pos_end=self.pos), None
+
 
         self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "'=' (after '!')")
+        return None, ExpectedCharError(pos_start, self.pos, "'=' or '->' (after '!')")
 
     def make_double_char_token(self, default_type, new_type, second_char):
         pos_start = self.pos.copy()

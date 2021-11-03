@@ -42,7 +42,6 @@ class TT(Enum):
 
 SINGLE_CHAR_TOK = {
     "+": TT.PLUS,
-    "-": TT.MINUS,
     "%": TT.MODU,
     "(": TT.LPAR,
     ")": TT.RPAR,
