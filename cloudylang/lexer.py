@@ -135,7 +135,7 @@ class Lexer:
             if self.current_char != ">":
                 return None, ExpectedCharError(pos_start, self.pos, "'>' (after '!-')")
             self.advance()
-            return Token(TT.NIN, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT.NOT_IN, pos_start=pos_start, pos_end=self.pos), None
 
 
         self.advance()

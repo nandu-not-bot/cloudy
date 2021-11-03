@@ -296,12 +296,15 @@ class Parser:
 
         # If no 'not' operator found, skip and look for arith_expr with all other comparison operators
         node = res.register(
-            self.bin_op(self.arith_expr, (TT.EE, TT.NE, TT.LT, TT.GT, TT.LTE, TT.GTE))
+            self.bin_op(self.membership_expr, (TT.EE, TT.NE, TT.LT, TT.GT, TT.LTE, TT.GTE))
         )
 
         if res.error:
             return res
         return res.success(node)
+
+    def membership_expr(self):
+        return self.bin_op(self.arith_expr, (TT.IN, TT.NOT_IN))
 
     def arith_expr(self):
         return self.bin_op(self.term, (TT.PLUS, TT.MINUS)) # Look for term with '+' or '-' operators

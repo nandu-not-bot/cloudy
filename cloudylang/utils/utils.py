@@ -38,7 +38,7 @@ class TT(Enum):
     COLON = auto()
     SPACE = auto()
     IN = auto()
-    NIN = auto()
+    NOT_IN = auto()
 
 SINGLE_CHAR_TOK = {
     "+": TT.PLUS,
@@ -79,7 +79,7 @@ NON_VALUE_TOKS = {
     TT.COLON: ":",
     TT.SPACE: " ",
     TT.IN: "->",
-    TT.NIN: "!->",
+    TT.NOT_IN: "!->",
 }
 
 KEYWORDS = [
