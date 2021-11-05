@@ -40,6 +40,7 @@ class TT(Enum):
     IN = auto()
     NOT_IN = auto()
     RANGE = auto()
+    BANG = auto()
 
 SINGLE_CHAR_TOK = {
     "+": TT.PLUS,
@@ -82,6 +83,7 @@ NON_VALUE_TOKS = {
     TT.IN: "->",
     TT.NOT_IN: "!->",
     TT.RANGE: "..",
+    TT.BANG: "!",
 }
 
 KEYWORDS = [

@@ -955,7 +955,9 @@ def run(fn: str, text: str):
     text = text.rstrip()
     lexer = Lexer(text, fn)
     tokens, error = lexer.make_tokens()
+
     # return tokens, error
+
     if error:
         return None, error
     if not tokens:
@@ -968,14 +970,16 @@ def run(fn: str, text: str):
     parser = Parser(tokens)
 
     ast = parser.parse()
-    # return ast.node, ast.error
-    if ast.error:
-        return None, ast.error
 
     # AST json
     generator = Generator()
     with open("cloudylang/utils/ast.json", "w") as f:
         json.dump(generator.gen(ast.node), f)
+
+    # return ast.node, ast.error
+
+    if ast.error:
+        return None, ast.error
 
     # Get Interpreter
     interpreter = Interpreter()

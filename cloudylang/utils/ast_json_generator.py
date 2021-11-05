@@ -1,4 +1,3 @@
-from .utils import Context, Position, SymbolTable
 from .nodes import *
 
 class Generator:
@@ -169,4 +168,12 @@ class Generator:
             "name": "UnaryOpNode",
             "op": repr(node.op_tok),
             "node": self.gen(node.node)
+        }
+
+    def gen_RangeNode(self, node: RangeNode) -> dict:
+        return {
+            "name": "RangeNode",
+            "start_value": self.gen(node.start_value_node),
+            "end_value": self.gen(node.end_value_node),
+            "step_value": self.gen(node.step_value_node) if node.step_value_node else None
         }

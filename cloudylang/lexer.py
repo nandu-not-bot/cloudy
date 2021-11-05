@@ -55,7 +55,7 @@ class Lexer:
 
                 case num if num in DIGITS:
                     self.found_indent = False
-                    num, error = self.make_number
+                    num, error = self.make_number()
                     if error: return [], error
                     tokens.append(num)
                     self.found_indent = False
@@ -72,10 +72,7 @@ class Lexer:
 
                 case "!":
                     self.found_indent = False
-                    token, error = self.make_not_equals()
-                    if error:
-                        return [], error
-                    tokens.append(token)
+                    tokens.append(self.make_bang())
 
                 case char if char in SINGLE_CHAR_TOK:
                     self.found_indent = False
@@ -84,7 +81,7 @@ class Lexer:
 
                 case ".":
                     self.found_indent = False
-                    error, token = self.make_range()
+                    token, error = self.make_range()
                     if error:
                         return [], error
                     tokens.append(token)
@@ -100,10 +97,6 @@ class Lexer:
                 case "/":
                     self.found_indent = False
                     tokens.append(self.make_double_char_token(TT.DIV, TT.FDIV, "/"))
-
-                case "=":
-                    self.found_indent = False
-                    tokens.append(self.make_double_char_token(TT.EQ, TT.EE, "="))
 
                 case "=":
                     self.found_indent = False
@@ -133,7 +126,7 @@ class Lexer:
             return None, InvalidSyntaxError(pos_start, self.pos, "Expected '.' after '.'")
         
         self.advance(2)
-        return Token(TT.RANGE, NON_VALUE_TOKS[TT.RANGE], pos_start, self.pos.copy())
+        return Token(TT.RANGE, NON_VALUE_TOKS[TT.RANGE], pos_start, self.pos.copy()), None
 
     def make_number(self) -> Token:
         num_str = ""
@@ -143,7 +136,6 @@ class Lexer:
         while self.current_char is not None and self.current_char in DIGITS + ".":
             if self.current_char == ".":
                 if self.peek == ".":
-                    self.reverse()
                     break
                 elif dot_found:
                     return None, InvalidSyntaxError(self.pos, self.pos, "Unexpected '.'")
@@ -154,9 +146,9 @@ class Lexer:
             self.advance()
 
         if dot_found:
-            return Token(TT.INT, int(num_str), pos_start, self.pos), None
-        else:
             return Token(TT.FLOAT, float(num_str), pos_start, self.pos), None
+        else:
+            return Token(TT.INT, int(num_str), pos_start, self.pos), None
 
     def make_identifier(self):
         id_str = ""
@@ -176,20 +168,19 @@ class Lexer:
 
         return Token(tok_type, id_str, pos_start, self.pos)
 
-    def make_not_equals(self) -> tuple[Token, Error]:
+    def make_bang(self) -> tuple[Token, Error]:
         pos_start = self.pos.copy()
         self.advance()
 
-        if self.peek == "=":
+        if self.current_char == "=":
             self.advance(2)
-            return Token(TT.NE, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT.NE, pos_start=pos_start, pos_end=self.pos)
 
         elif self.current_char == "-" and self.peek == ">":
             self.advance(2)
-            return Token(TT.NOT_IN, pos_start=pos_start, pos_end=self.pos), None
+            return Token(TT.NOT_IN, pos_start=pos_start, pos_end=self.pos)
 
-        self.advance()
-        return None, ExpectedCharError(pos_start, self.pos, "'=' or '->' (after '!')")
+        return Token(TT.BANG, pos_start=pos_start, pos_end=self.pos)
 
     def make_double_char_token(self, default_type, new_type, second_char):
         pos_start = self.pos.copy()

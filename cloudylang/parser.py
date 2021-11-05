@@ -267,8 +267,6 @@ class Parser:
             if res.error: return res
             return res.success(expr)
 
-    # TODO: Range expr must be above comparison expr but can only including anything below it.
-
     def expr(self):
         res = ParseResult()
 
@@ -306,7 +304,30 @@ class Parser:
         return res.success(node)
 
     def membership_expr(self):
-        return self.bin_op(self.arith_expr, (TT.IN, TT.NOT_IN))
+        return self.bin_op(self.range_expr, (TT.IN, TT.NOT_IN))
+
+    def range_expr(self):
+        res = ParseResult()
+        start_node = res.register(self.arith_expr())
+        if res.error: return res
+
+        if self.current_tok.type == TT.RANGE:
+            res.register_advancement()
+            self.advance()
+
+            end_node = res.register(self.arith_expr())
+            if res.error: return res
+
+            step_node = None
+
+            if self.current_tok.type == TT.BANG:
+                self.advance()
+                step_node = res.register(self.arith_expr())
+                if res.error: return res
+
+            return res.success(RangeNode(start_node, end_node, step_node))
+        
+        return res.success(start_node)
 
     def arith_expr(self):
         return self.bin_op(self.term, (TT.PLUS, TT.MINUS)) # Look for term with '+' or '-' operators
