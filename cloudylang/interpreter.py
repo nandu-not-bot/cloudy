@@ -11,6 +11,7 @@ from .datatypes.derivedtypes import *
 from .parser import *
 from .lexer import Lexer
 
+
 class Function(BaseFunction):
     def __init__(
         self, name, body_node: BinOpNode, arg_names: list, should_auto_return: bool
@@ -921,6 +922,39 @@ class Interpreter:
             .set_context(context)
         )
         return res.success(return_value)
+
+    def visit_RangeNode(self, node: RangeNode, context: Context):
+        res = RTResult()
+        start_value = res.register(self.visit(node.start_value_node, context))
+        if res.should_return():
+            return res
+
+        end_value = res.register(self.visit(node.end_value_node, context))
+        if res.should_return():
+            return res
+
+        step_value = None
+
+        if node.step_value_node:
+            step_value = res.register(self.visit(node.step_value_node, context))
+            if res.should_return():
+                return res
+
+        if (
+            not isinstance(start_value, Int)
+            or not isinstance(end_value, Int)
+            or (step_value and not isinstance(step_value, Int))
+        ):
+            return res.failure(
+                RTError(
+                    node.start_value_node.pos_start,
+                    node.start_value_node.pos_end,
+                    "Range values can only be of type 'int'",
+                    context,
+                )
+            )
+
+        return res.success(Range(start_value, end_value, step_value))
 
     def visit_ReturnNode(self, node: ReturnNode, context):
         res = RTResult()

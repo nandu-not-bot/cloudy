@@ -159,3 +159,22 @@ class Dict(DataType):
 
     def __repr__(self):
         return f"{self.pairs!r}"
+
+class Range(DataType):
+    def __init__(self, start: Number, end: Number, step: Number):
+        super().__init__()
+        self.start = start
+        self.end = end
+        self.step = step or Int(1)
+
+    def __iter__(self):
+        i = self.start.value
+        while i < self.end.value:
+            yield Number(i)
+            i += self.step.value
+
+    def copy(self):
+        return Range(self.start, self.end, self.step).set_context(self.context)
+
+    def __repr__(self):
+        return f"<range {self.start}..{self.end}{f'!{self.step}' if self.step else ''}>"
