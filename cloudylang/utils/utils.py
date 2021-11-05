@@ -39,6 +39,7 @@ class TT(Enum):
     SPACE = auto()
     IN = auto()
     NOT_IN = auto()
+    RANGE = auto()
 
 SINGLE_CHAR_TOK = {
     "+": TT.PLUS,
@@ -80,6 +81,7 @@ NON_VALUE_TOKS = {
     TT.SPACE: " ",
     TT.IN: "->",
     TT.NOT_IN: "!->",
+    TT.RANGE: "..",
 }
 
 KEYWORDS = [
@@ -115,6 +117,16 @@ class Position:
 
         if current_char == "\n":
             self.ln += 1
+            self.col = 0
+
+        return self
+
+    def reverse(self, last_char=None):
+        self.idx -= 1
+        self.col -= 1
+
+        if last_char == "\n":
+            self.ln -= 1
             self.col = 0
 
         return self
@@ -290,6 +302,3 @@ class Token:
         if self.value is not None:
             return f"{self.type}:{self.value}"
         return f"{self.type}"
-
-if __name__ == "__main__":
-    print(SINGLE_CHAR_TOK)
