@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Iterable
 
 from .utils.utils import TT, Context, RTResult, SymbolTable
 from .utils.ast_json_generator import Generator
@@ -10,6 +11,7 @@ from .datatypes.derivedtypes import *
 
 from .parser import *
 from .lexer import Lexer
+
 
 class Function(BaseFunction):
     def __init__(
@@ -696,49 +698,55 @@ class Interpreter:
             return res
 
         if node.op_tok.type == TT.PLUS:
-            result, error = left.__add__(right)
+            result, error = left.add(right)
 
         elif node.op_tok.type == TT.MINUS:
-            result, error = left.__sub__(right)
+            result, error = left.sub(right)
 
         elif node.op_tok.type == TT.MULT:
-            result, error = left.__mul__(right)
+            result, error = left.mul(right)
 
         elif node.op_tok.type == TT.DIV:
-            result, error = left.__truediv__(right)
+            result, error = left.truedive(right)
 
         elif node.op_tok.type == TT.FDIV:
-            result, error = left.__floordiv__(right)
+            result, error = left.floordiv(right)
 
         elif node.op_tok.type == TT.MODU:
-            result, error = left.__mod__(right)
+            result, error = left.mod(right)
 
         elif node.op_tok.type == TT.POW:
-            result, error = left.__pow__(right)
+            result, error = left.pow(right)
 
         elif node.op_tok.type == TT.EE:
-            result, error = left.__eq__(right)
+            result, error = left.eq(right)
 
         elif node.op_tok.type == TT.NE:
-            result, error = left.__ne__(right)
+            result, error = left.ne(right)
 
         elif node.op_tok.type == TT.LT:
-            result, error = left.__lt__(right)
+            result, error = left.lt(right)
 
         elif node.op_tok.type == TT.GT:
-            result, error = left.__gt__(right)
+            result, error = left.gt(right)
 
         elif node.op_tok.type == TT.LTE:
-            result, error = left.__lte__(right)
+            result, error = left.lte(right)
 
         elif node.op_tok.type == TT.GTE:
-            result, error = left.__gte__(right)
+            result, error = left.gte(right)
+
+        elif node.op_tok.type == TT.IN:
+            result, error = right.in_(left)
+
+        elif node.op_tok.type == TT.NOT_IN:
+            result, error = right.not_in(left)
 
         elif node.op_tok.matches(TT.KEYWORD, "and"):
-            result, error = left.__and__(right)
+            result, error = left.and_(right)
 
         elif node.op_tok.matches(TT.KEYWORD, "or"):
-            result, error = left.__or__(right)
+            result, error = left.or_(right)
 
         if error:
             return res.faliure(error)
@@ -756,7 +764,7 @@ class Interpreter:
         if node.op_tok.type == TT.MINUS:
             number = -number
         elif node.op_tok.matches(TT.KEYWORD, "not"):
-            number, error = number.__not__()
+            number, error = number.not_()
 
         if error:
             return res
@@ -787,35 +795,26 @@ class Interpreter:
 
     def visit_ForNode(self, node: ForNode, context: Context):
         res = RTResult()
-        elements = []
 
-        start_value = res.register(self.visit(node.start_value_node, context))
+        iterable = res.register(self.visit(node.iter_node, context))
         if res.should_return():
             return res
 
-        end_value = res.register(self.visit(node.end_value_node, context))
-        if res.should_return():
-            return res
+        for obj, error in iterable:
+            if error:
+                return res.faliure(
+                    RTError(
+                        node.iter_node.pos_start,
+                        node.iter_node.pos_end,
+                        f"type '{type(iterable).__name__.lower()}' cannot be iterated.",
+                        context,
+                    )
+                )
 
-        if node.step_value_node:
-            step_value = res.register(self.visit(node.step_value_node, context))
-            if res.should_return():
-                return res
-        else:
-            step_value = NewNum(1)
+            context.symbol_table.set(node.var_name_tok.value, obj)
 
-        i = start_value.value
-
-        if step_value.value >= 0:
-            condition = lambda: i < end_value.value
-        else:
-            condition = lambda: i > end_value.value
-
-        while condition():
-            context.symbol_table.set(node.var_name_tok.value, NewNum(i))
-            i += step_value.value
-
-            value = res.register(self.visit(node.body_node, context))
+            res.register(self.visit(node.body_node, context))
+            
             if (
                 res.should_return()
                 and not res.loop_should_continue
@@ -829,15 +828,7 @@ class Interpreter:
             if res.loop_should_continue:
                 continue
 
-            elements.append(value)
-
-        return res.success(
-            Null()
-            if node.should_return_null
-            else List(elements)
-            .set_context(context)
-            .set_pos(node.pos_start, node.pos_end)
-        )
+        return res.success(Null().set_context(context))
 
     def visit_WhileNode(self, node: WhileNode, context: Context):
         res = RTResult()
@@ -916,6 +907,39 @@ class Interpreter:
         )
         return res.success(return_value)
 
+    def visit_RangeNode(self, node: RangeNode, context: Context):
+        res = RTResult()
+        start_value = res.register(self.visit(node.start_value_node, context))
+        if res.should_return():
+            return res
+
+        end_value = res.register(self.visit(node.end_value_node, context))
+        if res.should_return():
+            return res
+
+        step_value = None
+
+        if node.step_value_node:
+            step_value = res.register(self.visit(node.step_value_node, context))
+            if res.should_return():
+                return res
+
+        if (
+            not isinstance(start_value, Int)
+            or not isinstance(end_value, Int)
+            or (step_value and not isinstance(step_value, Int))
+        ):
+            return res.failure(
+                RTError(
+                    node.start_value_node.pos_start,
+                    node.start_value_node.pos_end,
+                    "Range values can only be of type 'int'",
+                    context,
+                )
+            )
+
+        return res.success(Range(start_value, end_value, step_value))
+
     def visit_ReturnNode(self, node: ReturnNode, context):
         res = RTResult()
 
@@ -949,7 +973,9 @@ def run(fn: str, text: str):
     text = text.rstrip()
     lexer = Lexer(text, fn)
     tokens, error = lexer.make_tokens()
+
     # return tokens, error
+
     if error:
         return None, error
     if not tokens:
@@ -962,14 +988,16 @@ def run(fn: str, text: str):
     parser = Parser(tokens)
 
     ast = parser.parse()
-    # return ast.node, ast.error
-    if ast.error:
-        return None, ast.error
 
     # AST json
     generator = Generator()
     with open("cloudylang/utils/ast.json", "w") as f:
         json.dump(generator.gen(ast.node), f)
+
+    # return ast.node, ast.error
+
+    if ast.error:
+        return None, ast.error
 
     # Get Interpreter
     interpreter = Interpreter()
