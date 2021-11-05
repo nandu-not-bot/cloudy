@@ -88,6 +88,9 @@ class DataType:
     def __neg__(self):
         return None, self.illegal_operation()
 
+    def __iter__(self):
+        return None, self.illegal_operation()
+
 
 class NewNum:
     def __new__(cls, value):
@@ -482,3 +485,7 @@ class String(DataType):
 
     def __str__(self) -> str:
         return self.value
+
+    def __iter__(self):
+        for i in range(len(self.value)):
+            yield String(self.value[i]).set_context(self.context), None

@@ -126,11 +126,8 @@ class Generator:
         return {
             "name": "ForNode",
             "iterator_name": node.var_name_tok.value,
-            "start_value": self.gen(node.start_value_node),
-            "end_value": self.gen(node.end_value_node),
-            "step_value": self.gen(node.step_value_node) if node.step_value_node else None,
-            "body": self.gen(node.body_node),
-            "should_return_null": node.should_return_null
+            "iterator_node": self.gen(node.iter_node),
+            "body": self.gen(node.body_node)
         }
 
     def gen_ReturnNode(self, node: ReturnNode) -> dict:

@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Iterable
 
 from .utils.utils import TT, Context, RTResult, SymbolTable
 from .utils.ast_json_generator import Generator
@@ -794,35 +795,26 @@ class Interpreter:
 
     def visit_ForNode(self, node: ForNode, context: Context):
         res = RTResult()
-        elements = []
 
-        start_value = res.register(self.visit(node.start_value_node, context))
+        iterable = res.register(self.visit(node.iter_node, context))
         if res.should_return():
             return res
 
-        end_value = res.register(self.visit(node.end_value_node, context))
-        if res.should_return():
-            return res
+        for obj, error in iterable:
+            if error:
+                return res.faliure(
+                    RTError(
+                        node.iter_node.pos_start,
+                        node.iter_node.pos_end,
+                        f"type '{type(iterable).__name__.lower()}' cannot be iterated.",
+                        context,
+                    )
+                )
 
-        if node.step_value_node:
-            step_value = res.register(self.visit(node.step_value_node, context))
-            if res.should_return():
-                return res
-        else:
-            step_value = NewNum(1)
+            context.symbol_table.set(node.var_name_tok.value, obj)
 
-        i = start_value.value
-
-        if step_value.value >= 0:
-            condition = lambda: i < end_value.value
-        else:
-            condition = lambda: i > end_value.value
-
-        while condition():
-            context.symbol_table.set(node.var_name_tok.value, NewNum(i))
-            i += step_value.value
-
-            value = res.register(self.visit(node.body_node, context))
+            res.register(self.visit(node.body_node, context))
+            
             if (
                 res.should_return()
                 and not res.loop_should_continue
@@ -836,15 +828,7 @@ class Interpreter:
             if res.loop_should_continue:
                 continue
 
-            elements.append(value)
-
-        return res.success(
-            Null()
-            if node.should_return_null
-            else List(elements)
-            .set_context(context)
-            .set_pos(node.pos_start, node.pos_end)
-        )
+        return res.success(Null().set_context(context))
 
     def visit_WhileNode(self, node: WhileNode, context: Context):
         res = RTResult()

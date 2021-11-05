@@ -127,24 +127,17 @@ class ForNode:
     def __init__(
         self,
         var_name_tok: Token,
-        start_value_node: BinOpNode,
-        end_value_node: BinOpNode,
-        step_value_node: BinOpNode,
+        iter_node: ListNode,
         body_node: BinOpNode,
-        should_return_null: bool,
     ):
         self.var_name_tok = var_name_tok
-        self.start_value_node = start_value_node
-        self.end_value_node = end_value_node
-        self.step_value_node = step_value_node
         self.body_node = body_node
-        self.should_return_null = should_return_null
-
+        self.iter_node = iter_node
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.body_node.pos_end
 
     def __repr__(self):
-        return f"for {self.var_name_tok} = {self.start_value_node} ..."
+        return f"for {self.var_name_tok} -> {self.iter_node}"
 
 
 class WhileNode:
@@ -270,11 +263,21 @@ class DelNode:
 
 class RangeNode:
     def __init__(
-        self, start_value_node: NumberNode, end_value_node: NumberNode, step_value_node: NumberNode = None
+        self,
+        start_value_node: NumberNode,
+        end_value_node: NumberNode,
+        step_value_node: NumberNode = None,
     ) -> None:
         self.start_value_node = start_value_node
         self.end_value_node = end_value_node
         self.step_value_node = step_value_node
 
+        self.pos_start = self.start_value_node.pos_start
+        self.pos_end = (
+            self.step_value_node.pos_end
+            if self.step_value_node
+            else self.end_value_node.pos_end
+        )
+
     def __repr__(self):
-        return f"(range {self.start_node} to {self.end_node} step {self.step_node})"
+        return f"(range {self.start_value_node} to {self.end_value_node} step {self.step_value_node})"

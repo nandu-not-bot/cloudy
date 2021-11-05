@@ -180,16 +180,16 @@ class Parser:
                     ret_val = BreakNode(pos_start, self.current_tok)
 
                 case "if":
-                    ret_val = res.register(self.if_expr())
+                    ret_val = res.register(self.if_statement())
 
                 case "for":
-                    ret_val = res.register(self.for_expr())
+                    ret_val = res.register(self.for_statement())
 
                 case "while":
-                    ret_val = res.register(self.while_expr())
+                    ret_val = res.register(self.while_statement())
 
                 case "func":
-                    ret_val = res.register(self.func_def_expr())
+                    ret_val = res.register(self.func_def_statement())
 
                 case "del":
                     pos_start = self.current_tok.pos_start.copy()
@@ -647,7 +647,7 @@ class Parser:
 
         return res.success(DictNode(key_value_pairs, pos_start, pos_end))
 
-    def if_expr(self):
+    def if_statement(self):
         res = ParseResult()
         all_cases = res.register(self.if_expr_cases("if"))
         if res.error: return res
@@ -803,7 +803,7 @@ class Parser:
 
         return res.success((cases, else_case))
 
-    def for_expr(self):
+    def for_statement(self):
         res = ParseResult()
         if not self.current_tok.matches(TT.KEYWORD, "for"):
             return res.faliure(
@@ -830,52 +830,22 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        if self.current_tok.type != TT.EQ:
+        if self.current_tok.type != TT.IN:
             return res.faliure(
                 InvalidSyntaxError(
-                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '='"
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected '->'"
                 )
             )
 
         res.register_advancement()
         self.advance()
 
-        start_value = res.register(self.expr())
-        if res.error:
-            return res
-
-        if not self.current_tok.matches(TT.KEYWORD, "to"):
-            return res.faliure(
-                InvalidSyntaxError(
-                    self.current_tok.pos_start,
-                    self.current_tok.pos_end,
-                    "Expected 'to'",
-                )
-            )
-
-        res.register_advancement()
-        self.advance()
-
-        end_value = res.register(self.expr())
-        if res.error:
-            return res
-
-        if self.current_tok.matches(TT.KEYWORD, "step"):
-            res.register_advancement()
-            self.advance()
-
-            step_value = res.register(self.expr())
-            if res.error:
-                return res
-        else:
-            step_value = None
+        iter_node = res.register(self.expr())
 
         if self.current_tok.type != TT.COLON:
             return res.faliure(
                 InvalidSyntaxError(
-                    self.current_tok.pos_start,
-                    self.current_tok.pos_end,
-                    "Expected ':'",
+                    self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
                 )
             )
 
@@ -887,22 +857,16 @@ class Parser:
             self.advance()
 
             body = res.register(self.statements())
-            if res.error:
-                return res
 
-            return res.success(
-                ForNode(var_name, start_value, end_value, step_value, body, True)
-            )
-
-        body = res.register(self.statement())
+        else:
+            body = res.register(self.statement())
+            
         if res.error:
             return res
 
-        return res.success(
-            ForNode(var_name, start_value, end_value, step_value, body, False)
-        )
+        return res.success(ForNode(var_name, iter_node, body))
 
-    def while_expr(self):
+    def while_statement(self):
         res = ParseResult()
         if not self.current_tok.matches(TT.KEYWORD, "while"):
             return res.faliure(
@@ -947,7 +911,7 @@ class Parser:
 
         return res.success(WhileNode(condition, body, False))
 
-    def func_def_expr(self):
+    def func_def_statement(self):
         res = ParseResult()
 
         if not self.current_tok.matches(TT.KEYWORD, "func"):

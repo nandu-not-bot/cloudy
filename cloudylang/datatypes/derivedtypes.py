@@ -72,7 +72,7 @@ class List(DataType):
             for element in self.elements:
                 if isinstance(element, String) and other.value == element.value:
                     return Bool(True).set_context(self.set_context), None
-                
+
         elif isinstance(other, Number):
             for element in self.elements:
                 if isinstance(element, Number) and other.value == element.value:
@@ -82,13 +82,12 @@ class List(DataType):
             for element in self.elements:
                 if isinstance(element, Bool) and other.value == element.value:
                     return Bool(True).set_context(self.set_context), None
-        
+
         elif isinstance(other, Dict):
             for element in self.elements:
                 if isinstance(element, Dict) and other.pairs == element.pairs:
                     return Bool(True).set_context(self.set_context), None
 
-        
         return Bool(False).set_context(self.set_context), None
 
     def not_in(self, other):
@@ -115,7 +114,6 @@ class List(DataType):
                 if isinstance(element, Dict) and other.pairs == element.pairs:
                     return Bool(False).set_context(self.set_context), None
 
-
         return Bool(True).set_context(self.set_context), None
 
     def copy(self):
@@ -133,6 +131,10 @@ class List(DataType):
 
     def __repr__(self):
         return f"{self.elements!r}"
+
+    def __iter__(self):
+        for i in range(len(self.elements)):
+            yield self.elements[i].set_context(self.context), None
 
 
 class Dict(DataType):
@@ -160,6 +162,11 @@ class Dict(DataType):
     def __repr__(self):
         return f"{self.pairs!r}"
 
+    def __iter__(self):
+        for i in range(len(self.pairs.keys())):
+            yield String(self.pairs.keys()[i]).set_context(self.context), None
+
+
 class Range(DataType):
     def __init__(self, start: Number, end: Number, step: Number):
         super().__init__()
@@ -170,7 +177,7 @@ class Range(DataType):
     def __iter__(self):
         i = self.start.value
         while i < self.end.value:
-            yield Number(i)
+            yield Number(i).set_context(self.context), None
             i += self.step.value
 
     def copy(self):
