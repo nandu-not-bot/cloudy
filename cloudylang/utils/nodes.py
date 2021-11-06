@@ -281,3 +281,21 @@ class RangeNode:
 
     def __repr__(self):
         return f"(range {self.start_value_node} to {self.end_value_node} step {self.step_value_node})"
+
+
+class IfExprNode:
+    def __init__(
+        self,
+        condition_node: BinOpNode,
+        then_node: BinOpNode,
+        else_node: BinOpNode,
+    ):
+        self.condition_node = condition_node
+        self.then_node = then_node
+        self.else_node = else_node
+
+        self.pos_start = self.condition_node.pos_start
+        self.pos_end = self.else_node.pos_end
+
+    def __repr__(self):
+        return f"({self.condition_node} ? {self.then_node} : {self.else_node})"

@@ -1,6 +1,5 @@
 import json
 import os
-from typing import Iterable
 
 from .utils.utils import TT, Context, RTResult, SymbolTable
 from .utils.ast_json_generator import Generator
@@ -939,6 +938,22 @@ class Interpreter:
             )
 
         return res.success(Range(start_value, end_value, step_value))
+
+    def visit_IfExprNode(self, node: IfExprNode, context: Context):
+        res = RTResult()
+
+        condition = res.register(self.visit(node.condition_node, context))
+        if res.should_return():
+            return res
+
+        if condition.value:
+            value = res.register(self.visit(node.then_node, context))
+        else:
+            value = res.register(self.visit(node.else_node, context))
+
+        if res.should_return():
+            return res
+        return res.success(value)
 
     def visit_ReturnNode(self, node: ReturnNode, context):
         res = RTResult()

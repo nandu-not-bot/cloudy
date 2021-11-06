@@ -237,7 +237,7 @@ class Parser:
                     res.register_advancement()
                     self.advance()
 
-                    index = res.try_register(self.arith_expr())
+                    index = res.try_register(self.if_expr())
                     if res.error: return res
 
                     if self.current_tok.type != TT.RSQUARE:
@@ -263,9 +263,40 @@ class Parser:
                         return res.success(IndexAssignNode(var_name_tok, index, expr))
 
         if not detected_var:
-            expr = res.register(self.expr())
+            expr = res.register(self.if_expr())
             if res.error: return res
             return res.success(expr)
+
+    def if_expr(self):
+        res = ParseResult()
+        expr = res.register(self.expr())
+        if res.error: return res
+
+        if self.current_tok.type == TT.QMARK:
+            res.register_advancement()
+            self.advance()
+
+            condition = expr
+
+            true_val_node = res.register(self.expr())
+            if res.error: return res
+
+            if self.current_tok.type != TT.COLON:
+                return res.faliure(
+                    InvalidSyntaxError(
+                        self.current_tok.pos_start, self.current_tok.pos_end, "Expected ':'"
+                    )
+                )
+
+            res.register_advancement()
+            self.advance()
+
+            false_val_node = res.register(self.expr())
+            if res.error: return res
+
+            return res.success(IfExprNode(condition, true_val_node, false_val_node))
+
+        return res.success(expr)
 
     def expr(self):
         res = ParseResult()
@@ -364,18 +395,18 @@ class Parser:
             arg_nodes = []
 
             if self.current_tok.type != TT.RPAR:
-                arg_nodes.append(res.register(self.expr()))
+                arg_nodes.append(res.register(self.if_expr()))
                 if res.error: return res.faliure(
                     InvalidSyntaxError(
                         self.current_tok.pos_start, self.current_tok.pos_end, "Expected expression"
                     )
                 )
-            
+
                 while self.current_tok.type == TT.COMMA:
                     res.register_advancement()
                     self.advance()
 
-                    arg_nodes.append(res.register(self.expr()))
+                    arg_nodes.append(res.register(self.if_expr()))
                     if res.error: return res
 
             if self.current_tok.type != TT.RPAR:
@@ -402,7 +433,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-                index = res.register(self.arith_expr())
+                index = res.register(self.if_expr())
                 if res.error: return res
 
                 if not iterations:
@@ -528,7 +559,7 @@ class Parser:
         self.advance()
 
         if self.current_tok.type != TT.RSQUARE:
-            element_nodes.append(res.register(self.expr()))
+            element_nodes.append(res.register(self.if_expr()))
 
             if res.error: return res
 
@@ -536,7 +567,7 @@ class Parser:
                 res.register_advancement()
                 self.advance()
 
-                element_nodes.append(res.register(self.expr()))
+                element_nodes.append(res.register(self.if_expr()))
                 if res.error: return res
 
         if self.current_tok.type != TT.RSQUARE:
@@ -581,7 +612,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-        key = res.register(self.expr())
+        key = res.register(self.if_expr())
         if res.error: return res
 
         if self.current_tok.type != TT.COLON:
@@ -594,7 +625,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        value = res.register(self.expr())
+        value = res.register(self.if_expr())
         if res.error: return res
 
         key_value_pairs.append((key, value))
@@ -624,7 +655,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            value = res.register(self.expr())
+            value = res.register(self.if_expr())
             if res.error: return res
 
             key_value_pairs.append((key, value))
@@ -728,7 +759,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        condition = res.register(self.expr())
+        condition = res.register(self.if_expr())
         if res.error:
             return res
 
@@ -880,7 +911,7 @@ class Parser:
         res.register_advancement()
         self.advance()
 
-        condition = res.register(self.expr())
+        condition = res.register(self.if_expr())
         if res.error:
             return res
 
@@ -1009,7 +1040,7 @@ class Parser:
         self.advance()
 
         if self.current_tok.type != TT.NEWLINE:
-            node_to_return = res.register(self.expr())
+            node_to_return = res.register(self.if_expr())
             if res.error:
                 return res
 

@@ -41,6 +41,7 @@ class TT(Enum):
     NOT_IN = auto()
     RANGE = auto()
     BANG = auto()
+    QMARK = auto()
 
 SINGLE_CHAR_TOK = {
     "+": TT.PLUS,
@@ -53,6 +54,7 @@ SINGLE_CHAR_TOK = {
     "}": TT.RCURLY,
     ",": TT.COMMA,
     ":": TT.COLON,
+    "?": TT.QMARK,
 }
 
 
@@ -84,6 +86,7 @@ NON_VALUE_TOKS = {
     TT.NOT_IN: "!->",
     TT.RANGE: "..",
     TT.BANG: "!",
+    TT.QMARK: "?",
 }
 
 KEYWORDS = [

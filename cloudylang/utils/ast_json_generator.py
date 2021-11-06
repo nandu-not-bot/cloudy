@@ -174,3 +174,11 @@ class Generator:
             "end_value": self.gen(node.end_value_node),
             "step_value": self.gen(node.step_value_node) if node.step_value_node else None
         }
+    
+    def gen_IfExprNode(self, node: IfExprNode) -> dict:
+        return {
+            "name": "IfExprNode",
+            "condition": self.gen(node.condition_node),
+            "then_node": self.gen(node.then_node),
+            "else_node": self.gen(node.else_node)
+        }
